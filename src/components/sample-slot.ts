@@ -110,6 +110,7 @@ export class SampleSlot extends LitElement {
         padding: 4px 6px;
         font-size: 7px;
         min-width: 0;
+        height: 22px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
