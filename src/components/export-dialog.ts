@@ -76,6 +76,17 @@ export class ExportDialog extends LitElement {
         cursor: pointer;
       }
 
+      .field-hint {
+        font-family: var(--font-pixel);
+        font-size: 6px;
+        color: var(--text-muted);
+        margin-top: -12px;
+        margin-bottom: 16px;
+        padding-left: 22px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
       .button-row {
         display: flex;
         gap: 8px;
@@ -127,6 +138,7 @@ export class ExportDialog extends LitElement {
             />
             <label for="include-originals">Include original files</label>
           </div>
+          <div class="field-hint">Allows further editing when re-imported</div>
 
           <div class="button-row">
             <button @click=${this.close}>Cancel</button>

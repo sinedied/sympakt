@@ -138,6 +138,13 @@ export class AppShell extends LitElement {
         }
       }
 
+      button.import-highlight {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-glow);
+        box-shadow: 0 0 8px 2px var(--accent-glow);
+      }
+
       input[type='file'] {
         display: none;
       }
@@ -151,6 +158,7 @@ export class AppShell extends LitElement {
   @state() private exporting = false;
   @state() private importing = false;
   @state() private exportIncludeOriginals = false;
+  @state() private headerDragOver = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -159,14 +167,22 @@ export class AppShell extends LitElement {
     const filledSlots = this.bankCtrl.slots.filter((s) => s !== null).length;
 
     return html`
-      <header>
+      <header
+        @dragover=${this.onHeaderDragOver}
+        @dragleave=${this.onHeaderDragLeave}
+        @drop=${this.onHeaderDrop}
+      >
         <div class="logo">
           <h1>Sympakt</h1>
           <span class="subtitle">Sample Pack Manager</span>
         </div>
         <div class="toolbar">
           <span class="slot-count">${filledSlots}/64</span>
-          <button @click=${this.onImportZip} ?disabled=${this.importing}>
+          <button
+            class=${this.headerDragOver ? 'import-highlight' : ''}
+            @click=${this.onImportZip}
+            ?disabled=${this.importing}
+          >
             ${this.importing ? 'Importing...' : 'Import .zip'}
           </button>
           <button
@@ -230,21 +246,55 @@ export class AppShell extends LitElement {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    await this.importZipFile(file);
+    input.value = '';
+  }
 
+  private async importZipFile(file: File): Promise<void> {
     this.importing = true;
     try {
       const result = await importSamplePack(file);
       bankState.loadBank(result.slots);
       this.exportIncludeOriginals = result.includeOriginals;
       const count = result.slots.filter((s) => s !== null).length;
+      if (result.warning) {
+        alert(result.warning);
+      }
       this.showNotification(`Imported "${result.packName}" — ${count} samples`);
     } catch (err) {
       console.error('Import failed:', err);
       this.showNotification('Failed to import sample pack', true);
     } finally {
       this.importing = false;
-      input.value = '';
     }
+  }
+
+  private onHeaderDragOver(e: DragEvent): void {
+    e.preventDefault();
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy';
+      this.headerDragOver = true;
+    }
+  }
+
+  private onHeaderDragLeave(e: DragEvent): void {
+    const header = e.currentTarget as HTMLElement;
+    const related = e.relatedTarget as Node | null;
+    if (related && header.contains(related)) return;
+    this.headerDragOver = false;
+  }
+
+  private async onHeaderDrop(e: DragEvent): Promise<void> {
+    e.preventDefault();
+    this.headerDragOver = false;
+
+    const file = e.dataTransfer?.files[0];
+    if (!file || !file.name.toLowerCase().endsWith('.zip')) {
+      this.showNotification('Please drop a .zip file', true);
+      return;
+    }
+
+    await this.importZipFile(file);
   }
 
   private onOpenExport(): void {

@@ -5,6 +5,7 @@ import {
   SlotMetadata,
   ExportOptions,
   MAX_SAMPLE_DURATION,
+  MAX_SLOTS,
   METADATA_FILENAME,
 } from '../types/index.js';
 import {
@@ -77,16 +78,18 @@ export async function exportSamplePack(
     slotMetadata.push(meta);
   }
 
-  // Add metadata JSON
-  const metadata: PackMetadata = {
-    name: options.packName || 'Untitled Pack',
-    version: 1,
-    createdAt: new Date().toISOString(),
-    includeOriginals: options.includeOriginals,
-    slots: slotMetadata,
-  };
+  // Only include metadata when originals are present (needed for re-import with edits)
+  if (options.includeOriginals) {
+    const metadata: PackMetadata = {
+      name: options.packName || 'Untitled Pack',
+      version: 1,
+      createdAt: new Date().toISOString(),
+      includeOriginals: options.includeOriginals,
+      slots: slotMetadata,
+    };
 
-  files[METADATA_FILENAME] = strToU8(JSON.stringify(metadata, null, 2));
+    files[METADATA_FILENAME] = strToU8(JSON.stringify(metadata, null, 2));
+  }
 
   const zipped = zipSync(files, { level: 6 });
   return new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' });
@@ -98,7 +101,7 @@ export async function exportSamplePack(
  */
 export async function importSamplePack(
   file: File,
-): Promise<{ slots: (Sample | null)[]; packName: string; includeOriginals: boolean }> {
+): Promise<{ slots: (Sample | null)[]; packName: string; includeOriginals: boolean; warning?: string }> {
   const arrayBuffer = await file.arrayBuffer();
   const unzipped = unzipSync(new Uint8Array(arrayBuffer));
 
@@ -114,32 +117,59 @@ export async function importSamplePack(
   }
 
   // Collect WAV files (excluding originals/ folder and metadata)
-  const wavEntries: { filename: string; data: Uint8Array; slotIndex: number }[] = [];
+  const wavEntries: { filename: string; basename: string; data: Uint8Array; slotIndex: number }[] = [];
 
   for (const [filename, data] of Object.entries(unzipped)) {
     if (filename === METADATA_FILENAME) continue;
     if (filename.startsWith('originals/')) continue;
     if (!filename.toLowerCase().endsWith('.wav')) continue;
 
-    // Try to extract slot number from filename pattern: NN_name.wav
-    const match = filename.match(/^(\d{2})_/);
-    const slotIndex = match ? parseInt(match[1], 10) - 1 : wavEntries.length;
+    const basename = filename.split('/').pop() || filename;
 
-    wavEntries.push({ filename, data, slotIndex });
+    // Try to extract slot number from filename pattern: <number>_name.wav
+    const match = basename.match(/^(\d+)_/);
+    const slotIndex = match ? parseInt(match[1], 10) - 1 : -1;
+
+    wavEntries.push({ filename, basename, data, slotIndex });
   }
 
-  // Sort by slot index
-  wavEntries.sort((a, b) => a.slotIndex - b.slotIndex);
+  // Sort: entries with valid slot indices first (by index), then the rest in order
+  wavEntries.sort((a, b) => {
+    if (a.slotIndex >= 0 && b.slotIndex >= 0) return a.slotIndex - b.slotIndex;
+    if (a.slotIndex >= 0) return -1;
+    if (b.slotIndex >= 0) return 1;
+    return 0;
+  });
 
-  const slots: (Sample | null)[] = new Array(64).fill(null);
+  // Warn if more than 64 WAV files found (only relevant without metadata)
+  let warning: string | undefined;
+  if (!metadata && wavEntries.length > MAX_SLOTS) {
+    warning = `ZIP contains ${wavEntries.length} WAV files. Only the first ${MAX_SLOTS} will be loaded.`;
+  }
+
+  const slots: (Sample | null)[] = new Array(MAX_SLOTS).fill(null);
+  let nextSlot = 0;
+  let loaded = 0;
 
   for (const entry of wavEntries) {
-    if (entry.slotIndex < 0 || entry.slotIndex >= 64) continue;
+    if (loaded >= MAX_SLOTS) break;
 
-    // Determine original filename from metadata if available
-    const slotMeta = metadata?.slots.find((s) => s.slot === entry.slotIndex + 1);
-    const name = slotMeta?.name ?? stripExtension(entry.filename.replace(/^\d{2}_/, ''));
-    const originalFileName = slotMeta?.originalFileName ?? entry.filename;
+    // Determine target slot
+    let targetSlot: number;
+    if (entry.slotIndex >= 0 && entry.slotIndex < MAX_SLOTS && slots[entry.slotIndex] === null) {
+      targetSlot = entry.slotIndex;
+    } else {
+      while (nextSlot < MAX_SLOTS && slots[nextSlot] !== null) nextSlot++;
+      if (nextSlot >= MAX_SLOTS) break;
+      targetSlot = nextSlot;
+    }
+
+    // Determine name and original file info from metadata if available
+    const slotMeta = entry.slotIndex >= 0
+      ? metadata?.slots.find((s) => s.slot === entry.slotIndex + 1)
+      : undefined;
+    const name = slotMeta?.name ?? stripExtension(entry.basename.replace(/^\d+_/, ''));
+    const originalFileName = slotMeta?.originalFileName ?? entry.basename;
 
     // Prefer original file for decoding if available
     let originalFile = entry.data;
@@ -165,13 +195,15 @@ export async function importSamplePack(
       loop: slotMeta?.loop ?? null,
     };
 
-    slots[entry.slotIndex] = sample;
+    slots[targetSlot] = sample;
+    loaded++;
   }
 
   return {
     slots,
     packName: metadata?.name ?? stripExtension(file.name),
     includeOriginals: metadata?.includeOriginals ?? false,
+    warning,
   };
 }
 
