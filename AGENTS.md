@@ -13,6 +13,8 @@ A single-page application for managing sample packs for the Elektron Syntakt syn
 
 ```
 src/
+├── assets/
+│   └── PressStart2P-Regular.woff2  # Pixel font (inlined at build time)
 ├── components/       # Lit web components
 │   ├── app-shell.ts        # Main application shell
 │   ├── sample-bank.ts      # 64-slot scrollable bank with drag & drop
@@ -30,6 +32,8 @@ src/
 │   └── index.ts            # Shared TypeScript types and interfaces
 ├── styles/
 │   └── theme.ts            # Global styles, Elektron design tokens, pixel font
+├── icons.ts                # SVG icon library (Lit svg templates)
+├── vite-env.d.ts           # Vite client type declarations
 ├── index.ts                # App entry point
 └── index.html              # HTML shell
 ```
@@ -38,15 +42,17 @@ src/
 
 - **Runtime**: Node.js 24+, ESM modules
 - **Language**: TypeScript (strict mode)
-- **Build**: Vite 6+
+- **Build**: Vite 6+ with `vite-plugin-singlefile` (single HTML output)
 - **UI**: Lit 3+ web components (no framework)
 - **Audio**: Web Audio API (decoding, resampling, playback, waveform analysis)
 - **ZIP**: fflate (lightweight, zero-dependency compression)
 - **Styling**: CSS via Lit `css` tagged templates; Elektron-inspired dark theme with pixel fonts
+- **Icons**: Inline SVG via Lit `svg` tagged templates (`src/icons.ts`)
 
 ## Constraints and Requirements
 
 - **No backend** — everything runs client-side
+- **Single-file build** — production build outputs a single self-contained `index.html` (all JS, CSS, fonts, and favicon inlined)
 - **Minimal dependencies** — prefer browser APIs over libraries
 - **Export format**: 16-bit, 48kHz, mono WAV (Syntakt requirement)
 - **Max sample length**: looped samples export only the loop region; non-looped samples are truncated to 5 seconds (10 seconds in LOFI mode)
@@ -98,7 +104,7 @@ npm run preview
 
 ## Loop Editing
 
-- **Toggle**: each slot has a loop button (⟳); enabling sets loop from 10% to end of sample (capped at 5s) with 10% crossfade duration
+- **Toggle**: each slot has a loop button (loop icon); enabling sets loop from 10% to end of sample (capped at 5s) with 10% crossfade duration
 - **Loop overlay**: interactive canvas overlay on the waveform with draggable handles
   - Green handles: loop start/end points (auto-snap to zero crossings)
   - Blue diamond at top: crossfade duration handle
@@ -119,6 +125,21 @@ npm run preview
 - **Preview playback**: plays at normal 1× rate with a **lowpass filter** at 12 kHz (`EXPORT_SAMPLE_RATE / (2 × LOFI_SPEED_FACTOR)`) to simulate the reduced bandwidth of the final exported audio.
 - **State**: `Sample.lofi: boolean`, toggled via `bankState.updateSampleLofi()`. Toggling recalculates `isTruncated` and clamps loop duration when disabling LOFI.
 - **Metadata**: `lofi` flag is saved/restored in `sympakt.json` for ZIP roundtrip.
+
+## Icons
+
+- All UI icons are inline SVGs defined in `src/icons.ts` using Lit `svg` tagged templates
+- Icons use `currentColor` for fill/stroke so they inherit the button's text color
+- Available icons: `iconPlay`, `iconStop`, `iconLoop`, `iconCheck`, `iconClose`, `iconPlus`, `iconHeart`
+- The heart icon uses pixel-art rendering (`shape-rendering="crispEdges"`) to match the pixel font aesthetic
+- When adding new icons, follow the same pattern: export a `const` from `icons.ts`
+
+## Build Output
+
+- Production build produces a **single `index.html`** file via `vite-plugin-singlefile`
+- All JavaScript, CSS, the pixel font (base64 woff2), and the favicon (inline SVG data URI) are embedded
+- The output file can be saved and used fully offline — no external requests needed
+- Font is imported via Vite's `?url` suffix in `src/index.ts` with `assetsInlineLimit: Infinity` to force base64 inlining
 
 ## Security Considerations
 

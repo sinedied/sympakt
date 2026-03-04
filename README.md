@@ -30,6 +30,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Original file preservation** — optionally include source files in the exported archive
 - **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
+- **Single-file that works offline** — App is only one self-contained HTML file, fully usable offline
 
 ## Getting Started
 
@@ -55,16 +56,18 @@ npm run build
 npm run preview   # preview the production build locally
 ```
 
+The build outputs a single `index.html` in `dist/` with all JS, CSS, fonts, and the favicon inlined. You can open it directly in any browser — no server needed.
+
 ## Usage
 
-1. **Import samples** — drag audio files onto any slot, or click the `+` button to browse
+1. **Import samples** — drag audio files onto any slot, or click the **+** button to browse
 2. **Reorder** — drag slots to rearrange the bank
-3. **Preview** — click ▶ on any slot to play the sample
-4. **Loop** — click ⟳ to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
+3. **Preview** — click the play button on any slot to hear the sample
+4. **Loop** — click the loop button to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
 5. **LOFI** — click **LO** to enable LOFI mode; doubles max duration to 10s by exporting at 2× speed (play the sample pitched down one octave on the Syntakt to hear the original sound)
-6. **Remove** — click ✕ to clear a slot (requires confirmation)
-6. **Import a pack** — click **Import .zip** to load a previously exported sample pack
-7. **Export** — click **Export .zip**, set a pack name, and optionally include original files
+6. **Remove** — click the × button to clear a slot (requires confirmation)
+7. **Import a pack** — click **Import .zip** to load a previously exported sample pack
+8. **Export** — click **Export .zip**, set a pack name, and optionally include original files
 
 ### Import from ZIP
 
