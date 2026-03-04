@@ -82,6 +82,7 @@ export async function exportSamplePack(
     name: options.packName || 'Untitled Pack',
     version: 1,
     createdAt: new Date().toISOString(),
+    includeOriginals: options.includeOriginals,
     slots: slotMetadata,
   };
 
@@ -97,7 +98,7 @@ export async function exportSamplePack(
  */
 export async function importSamplePack(
   file: File,
-): Promise<{ slots: (Sample | null)[]; packName: string }> {
+): Promise<{ slots: (Sample | null)[]; packName: string; includeOriginals: boolean }> {
   const arrayBuffer = await file.arrayBuffer();
   const unzipped = unzipSync(new Uint8Array(arrayBuffer));
 
@@ -170,6 +171,7 @@ export async function importSamplePack(
   return {
     slots,
     packName: metadata?.name ?? stripExtension(file.name),
+    includeOriginals: metadata?.includeOriginals ?? false,
   };
 }
 

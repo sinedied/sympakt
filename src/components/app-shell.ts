@@ -150,6 +150,7 @@ export class AppShell extends LitElement {
   @state() private notification: { message: string; error: boolean } | null = null;
   @state() private exporting = false;
   @state() private importing = false;
+  @state() private exportIncludeOriginals = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -195,6 +196,7 @@ export class AppShell extends LitElement {
       <sp-export-dialog
         ?open=${this.exportDialogOpen}
         .sampleCount=${filledSlots}
+        .includeOriginals=${this.exportIncludeOriginals}
         @dialog-close=${() => (this.exportDialogOpen = false)}
         @export-confirm=${this.onExportConfirm}
       ></sp-export-dialog>
@@ -233,6 +235,7 @@ export class AppShell extends LitElement {
     try {
       const result = await importSamplePack(file);
       bankState.loadBank(result.slots);
+      this.exportIncludeOriginals = result.includeOriginals;
       const count = result.slots.filter((s) => s !== null).length;
       this.showNotification(`Imported "${result.packName}" — ${count} samples`);
     } catch (err) {
@@ -251,10 +254,11 @@ export class AppShell extends LitElement {
   private async onExportConfirm(e: CustomEvent<ExportOptions>): Promise<void> {
     this.exporting = true;
     try {
+      this.exportIncludeOriginals = e.detail.includeOriginals;
       const blob = await exportSamplePack(this.bankCtrl.slots, e.detail);
       const filename = `${e.detail.packName.replace(/[^a-zA-Z0-9_\- ]/g, '_')}.zip`;
       downloadBlob(blob, filename);
-      this.showNotification(`Exported "${e.detail.packName}"`);
+      this.showNotification(`Exported "${e.detail.packName}"`); 
     } catch (err) {
       console.error('Export failed:', err);
       this.showNotification('Failed to export sample pack', true);

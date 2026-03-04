@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 
 /**
@@ -94,9 +94,8 @@ export class ExportDialog extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: Number }) sampleCount = 0;
-
-  @state() private packName = 'My Sample Pack';
-  @state() private includeOriginals = false;
+  @property({ type: String }) packName = 'My Sample Pack';
+  @property({ type: Boolean }) includeOriginals = false;
 
   override render() {
     if (!this.open) return null;

@@ -35,6 +35,7 @@ export interface PackMetadata {
   name: string;
   version: number;
   createdAt: string;
+  includeOriginals: boolean;
   slots: SlotMetadata[];
 }
 
@@ -63,4 +64,4 @@ export const EXPORT_SAMPLE_RATE = 48_000;
 export const EXPORT_BIT_DEPTH = 16;
 export const EXPORT_CHANNELS = 1; // mono
 export const WAVEFORM_COLUMNS = 200; // number of columns in waveform display
-export const METADATA_FILENAME = 'sympakt-metadata.json';
+export const METADATA_FILENAME = 'sympakt.json';
