@@ -116,15 +116,18 @@ export async function importSamplePack(
     }
   }
 
-  // Collect WAV files (excluding originals/ folder and metadata)
+  // Collect WAV files (excluding originals/, __MACOSX/ resource forks, and empty entries)
   const wavEntries: { filename: string; basename: string; data: Uint8Array; slotIndex: number }[] = [];
 
   for (const [filename, data] of Object.entries(unzipped)) {
-    if (filename === METADATA_FILENAME) continue;
-    if (filename.startsWith('originals/')) continue;
     if (!filename.toLowerCase().endsWith('.wav')) continue;
+    if (filename.startsWith('originals/')) continue;
+    if (filename.includes('__MACOSX/')) continue;
+    if (data.length === 0) continue;
 
     const basename = filename.split('/').pop() || filename;
+    // Skip macOS resource fork files (._prefix can appear outside __MACOSX/)
+    if (basename.startsWith('._')) continue;
 
     // Try to extract slot number from filename pattern: <number>_name.wav
     const match = basename.match(/^(\d+)_/);
@@ -183,24 +186,28 @@ export async function importSamplePack(
       originalFile.byteOffset + originalFile.byteLength,
     );
 
-    const audioBuffer = await decodeAudioFile(audioSourceData);
-    const resampled = await resampleToExportFormat(audioBuffer);
-    const waveformData = generateWaveformData(resampled);
+    try {
+      const audioBuffer = await decodeAudioFile(audioSourceData);
+      const resampled = await resampleToExportFormat(audioBuffer);
+      const waveformData = generateWaveformData(resampled);
 
-    const sample: Sample = {
-      id: crypto.randomUUID(),
-      name,
-      originalFileName,
-      audioBuffer: resampled,
-      waveformData,
-      duration: audioBuffer.duration,
-      isTruncated: audioBuffer.duration > MAX_SAMPLE_DURATION,
-      originalFile,
-      loop: slotMeta?.loop ?? null,
-    };
+      const sample: Sample = {
+        id: crypto.randomUUID(),
+        name,
+        originalFileName,
+        audioBuffer: resampled,
+        waveformData,
+        duration: audioBuffer.duration,
+        isTruncated: audioBuffer.duration > MAX_SAMPLE_DURATION,
+        originalFile,
+        loop: slotMeta?.loop ?? null,
+      };
 
-    slots[targetSlot] = sample;
-    loaded++;
+      slots[targetSlot] = sample;
+      loaded++;
+    } catch {
+      console.warn(`Skipping unreadable file: ${entry.filename}`);
+    }
   }
 
   return {
