@@ -26,6 +26,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **ZIP import/export** — load and save complete sample packs as `.zip` files
 - **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
 - **5-second truncation** — samples exceeding max duration are truncated with visual warning
+- **LOFI mode** — doubles max sample time to 10 seconds by exporting at 2× speed (one octave up); preview simulates the bandwidth reduction with a lowpass filter
 - **Original file preservation** — optionally include source files in the exported archive
 - **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
@@ -60,7 +61,8 @@ npm run preview   # preview the production build locally
 2. **Reorder** — drag slots to rearrange the bank
 3. **Preview** — click ▶ on any slot to play the sample
 4. **Loop** — click ⟳ to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
-5. **Remove** — click ✕ to clear a slot (requires confirmation)
+5. **LOFI** — click **LO** to enable LOFI mode; doubles max duration to 10s by exporting at 2× speed (play the sample pitched down one octave on the Syntakt to hear the original sound)
+6. **Remove** — click ✕ to clear a slot (requires confirmation)
 6. **Import a pack** — click **Import .zip** to load a previously exported sample pack
 7. **Export** — click **Export .zip**, set a pack name, and optionally include original files
 
@@ -82,4 +84,4 @@ Exported `.zip` files contain:
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 
 > [!NOTE]
-> Non-looped samples longer than 5 seconds are automatically truncated on export. Looped samples export only the selected loop region with crossfade applied.
+> Non-looped samples longer than 5 seconds are automatically truncated on export (10 seconds in LOFI mode). Looped samples export only the selected loop region with crossfade applied. LOFI samples are exported at 2× speed — pitch them down one octave on the Syntakt to hear the original sound.
