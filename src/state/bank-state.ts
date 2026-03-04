@@ -1,6 +1,7 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { Sample, MAX_SLOTS, MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
 import type { LoopSettings } from '../types/index.js';
+import { saveBank, loadBank, clearAll as clearPersistedData } from '../services/persistence.js';
 
 type BankListener = () => void;
 
@@ -11,6 +12,7 @@ type BankListener = () => void;
 class BankStateStore {
   private slots: (Sample | null)[] = new Array(MAX_SLOTS).fill(null);
   private listeners = new Set<BankListener>();
+  private saveTimer?: ReturnType<typeof setTimeout>;
 
   /** Get a snapshot of all slots */
   getSlots(): ReadonlyArray<Sample | null> {
@@ -81,9 +83,10 @@ class BankStateStore {
     this.notify();
   }
 
-  /** Clear the whole bank */
+  /** Clear the whole bank and persisted data */
   clearAll(): void {
     this.slots = new Array(MAX_SLOTS).fill(null);
+    clearPersistedData().catch((err) => console.warn('Failed to clear persisted data:', err));
     this.notify();
   }
 
@@ -101,10 +104,42 @@ class BankStateStore {
     return () => this.listeners.delete(listener);
   }
 
-  private notify(): void {
+  /**
+   * Restore bank state from IndexedDB. Returns true if data was found.
+   */
+  async restoreFromDB(): Promise<boolean> {
+    try {
+      const slots = await loadBank();
+      if (slots) {
+        this.slots = slots;
+        this.notifyOnly();
+        return true;
+      }
+    } catch (err) {
+      console.warn('Failed to restore bank from IndexedDB:', err);
+    }
+    return false;
+  }
+
+  /** Notify listeners without triggering a save (used during restore) */
+  private notifyOnly(): void {
     for (const listener of this.listeners) {
       listener();
     }
+  }
+
+  private notify(): void {
+    this.notifyOnly();
+    this.debouncedSave();
+  }
+
+  private debouncedSave(): void {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      saveBank(this.slots).catch((err) =>
+        console.warn('Failed to persist bank state:', err),
+      );
+    }, 500);
   }
 }
 

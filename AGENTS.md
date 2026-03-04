@@ -23,6 +23,7 @@ src/
 │   └── export-dialog.ts    # Export options dialog
 ├── services/
 │   ├── audio-engine.ts     # Web Audio API: decode, resample, preview, analyze
+│   ├── persistence.ts      # IndexedDB session persistence (bank + settings)
 │   ├── wav-encoder.ts      # Encode PCM data to 16-bit/48kHz/mono WAV
 │   ├── wav-decoder.ts      # Decode WAV files
 │   └── zip-service.ts      # ZIP import/export using fflate
@@ -140,6 +141,16 @@ npm run preview
 - All JavaScript, CSS, the pixel font (base64 woff2), and the favicon (inline SVG data URI) are embedded
 - The output file can be saved and used fully offline — no external requests needed
 - Font is imported via Vite's `?url` suffix in `src/index.ts` with `assetsInlineLimit: Infinity` to force base64 inlining
+
+## Session Persistence
+
+- **Storage**: IndexedDB database `sympakt-db` with two object stores: `samples` (keyed by slot index) and `settings` (keyed by name)
+- **Auto-save**: bank state is debounced-saved (500ms) on every change via `bankState.notify()`
+- **AudioBuffer serialization**: channel data stored as `Float32Array[]` with `sampleRate`, `numberOfChannels`, and `length` metadata; waveform data is regenerated on restore via `generateWaveformData()`
+- **Export options persistence**: pack name and "include originals" flag saved to the `settings` store when changed and restored on load
+- **Restore**: `bankState.restoreFromDB()` + `loadSettings()` called in `AppShell.connectedCallback()`; restoring skips triggering a save cycle
+- **Clear**: `bankState.clearAll()` clears both in-memory slots and all IndexedDB data; export options are also reset to defaults
+- **Graceful degradation**: all persistence operations use try/catch; failures are logged but do not block the UI
 
 ## Security Considerations
 

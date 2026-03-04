@@ -31,6 +31,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
 - **Single-file that works offline** — App is only one self-contained HTML file, fully usable offline
+- **Session persistence** — your current bank, samples, and export options are automatically saved to IndexedDB and restored when you reopen the page
 
 ## Getting Started
 

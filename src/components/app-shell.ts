@@ -8,6 +8,7 @@ import {
   importSamplePack,
   downloadBlob,
 } from '../services/zip-service.js';
+import { loadSettings, saveSettings } from '../services/persistence.js';
 import type { ExportOptions } from '../types/index.js';
 import './sample-bank.js';
 import './export-dialog.js';
@@ -165,10 +166,35 @@ export class AppShell extends LitElement {
   @state() private exporting = false;
   @state() private importing = false;
   @state() private exportIncludeOriginals = false;
+  @state() private exportPackName = 'My Sample Pack';
   @state() private headerDragOver = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    this.restoreSession();
+  }
+
+  private async restoreSession(): Promise<void> {
+    try {
+      const [restored, settings] = await Promise.all([
+        bankState.restoreFromDB(),
+        loadSettings(),
+      ]);
+      if (settings) {
+        if (settings.packName !== undefined) this.exportPackName = settings.packName;
+        if (settings.includeOriginals !== undefined) this.exportIncludeOriginals = settings.includeOriginals;
+      }
+      if (restored) {
+        const count = this.bankCtrl.slots.filter((s) => s !== null).length;
+        this.showNotification(`Restored session — ${count} samples`);
+      }
+    } catch (err) {
+      console.warn('Session restore failed:', err);
+    }
+  }
 
   override render() {
     const filledSlots = this.bankCtrl.slots.filter((s) => s !== null).length;
@@ -222,6 +248,7 @@ export class AppShell extends LitElement {
       <sp-export-dialog
         ?open=${this.exportDialogOpen}
         .sampleCount=${filledSlots}
+        .packName=${this.exportPackName}
         .includeOriginals=${this.exportIncludeOriginals}
         @dialog-close=${() => (this.exportDialogOpen = false)}
         @export-confirm=${this.onExportConfirm}
@@ -266,6 +293,8 @@ export class AppShell extends LitElement {
       const result = await importSamplePack(file);
       bankState.loadBank(result.slots);
       this.exportIncludeOriginals = result.includeOriginals;
+      this.exportPackName = result.packName;
+      this.persistExportOptions();
       const count = result.slots.filter((s) => s !== null).length;
       if (result.warning) {
         alert(result.warning);
@@ -315,6 +344,8 @@ export class AppShell extends LitElement {
     this.exporting = true;
     try {
       this.exportIncludeOriginals = e.detail.includeOriginals;
+      this.exportPackName = e.detail.packName.trim() || 'Untitled Pack';
+      this.persistExportOptions();
       const blob = await exportSamplePack(this.bankCtrl.slots, e.detail);
       const filename = `${e.detail.packName.replace(/[^a-zA-Z0-9_\- ]/g, '_')}.zip`;
       downloadBlob(blob, filename);
@@ -330,8 +361,17 @@ export class AppShell extends LitElement {
   private onClearAll(): void {
     if (confirm('Clear all slots?')) {
       bankState.clearAll();
+      this.exportPackName = 'My Sample Pack';
+      this.exportIncludeOriginals = false;
       this.showNotification('All slots cleared');
     }
+  }
+
+  private persistExportOptions(): void {
+    saveSettings({
+      packName: this.exportPackName,
+      includeOriginals: this.exportIncludeOriginals,
+    }).catch((err) => console.warn('Failed to persist export options:', err));
   }
 }
 
