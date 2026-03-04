@@ -1,0 +1,78 @@
+import { LitElement, html, css } from 'lit';
+import { customElement } from 'lit/decorators.js';
+import { theme, sharedStyles } from '../styles/theme.js';
+import { bankState, BankStateController } from '../state/bank-state.js';
+import { processAudioFile } from '../services/zip-service.js';
+import './sample-slot.js';
+
+/**
+ * The 64-slot sample bank. Vertically scrollable list.
+ */
+@customElement('sp-sample-bank')
+export class SampleBank extends LitElement {
+  static override styles = [
+    theme,
+    sharedStyles,
+    css`
+      :host {
+        display: block;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .bank-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 8px;
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+    `,
+  ];
+
+  private bankCtrl = new BankStateController(this);
+
+  override render() {
+    return html`
+      <div class="bank-list">
+        ${this.bankCtrl.slots.map(
+          (sample, i) => html`
+            <sp-sample-slot
+              .index=${i}
+              .sample=${sample}
+              @sample-import=${this.onSampleImport}
+              @sample-remove=${this.onSampleRemove}
+              @sample-move=${this.onSampleMove}
+            ></sp-sample-slot>
+          `,
+        )}
+      </div>
+    `;
+  }
+
+  private async onSampleImport(e: CustomEvent<{ index: number; file: File }>): Promise<void> {
+    const { index, file } = e.detail;
+    try {
+      const sample = await processAudioFile(file);
+      bankState.setSample(index, sample);
+    } catch (err) {
+      console.error('Failed to import sample:', err);
+    }
+  }
+
+  private onSampleRemove(e: CustomEvent<{ index: number }>): void {
+    bankState.removeSample(e.detail.index);
+  }
+
+  private onSampleMove(e: CustomEvent<{ from: number; to: number }>): void {
+    bankState.moveSample(e.detail.from, e.detail.to);
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'sp-sample-bank': SampleBank;
+  }
+}

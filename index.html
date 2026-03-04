@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sympakt — Sample Pack Manager</title>
+    <meta name="description" content="Manage sample packs for the Elektron Sympakt — right in your browser." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      @font-face {
+        font-family: 'PixelFont';
+        src: url('/fonts/PressStart2P-Regular.woff2') format('woff2');
+        font-display: swap;
+      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; }
+      body {
+        font-family: 'PixelFont', monospace;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <sp-app></sp-app>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

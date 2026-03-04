@@ -1,0 +1,29 @@
+{
+  "name": "sympackt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sample pack manager for the Elektron Sympakt",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "elektron",
+    "sympakt",
+    "sample-pack",
+    "audio",
+    "web-audio"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "lit": "^3.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
