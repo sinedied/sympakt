@@ -1,6 +1,6 @@
 <div align="center">
 
-# SYMPAKT
+# Sympakt
 
 **Sample Pack Manager for the Elektron Syntakt**
 
@@ -13,14 +13,13 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 
 [Features](#features) · [Getting Started](#getting-started) · [Usage](#usage) · [Export Format](#export-format)
 
-</div>
+⭐ If you find this useful, give it a star on GitHub!
 
----
+</div>
 
 ## Features
 
 - **64-slot sample bank** — vertically scrollable grid with drag-and-drop reordering
-- **Pixelated waveform previews** — Elektron-inspired visual style using Web Audio API analysis
 - **In-browser audio playback** — preview any sample instantly
 - **ZIP import/export** — load and save complete sample packs as `.zip` files
 - **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
@@ -28,7 +27,6 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Original file preservation** — optionally include source files in the exported archive
 - **Metadata JSON** — each pack includes a `sympakt-metadata.json` with slot mappings and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
-- **Dark pixel UI** — design language inspired by Elektron hardware aesthetics
 
 ## Getting Started
 
@@ -82,30 +80,3 @@ Exported `.zip` files contain:
 
 > [!NOTE]
 > Samples longer than 5 seconds are automatically truncated on export. The waveform preview highlights the truncated portion in orange.
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| UI Components | [Lit](https://lit.dev) 3 |
-| Build | [Vite](https://vite.dev) 6 |
-| Language | TypeScript (strict) |
-| Audio | Web Audio API |
-| Compression | [fflate](https://github.com/101arrowz/fflate) |
-| Deployment | GitHub Pages |
-
-## Deployment
-
-The project includes a GitHub Actions workflow that automatically builds and deploys to GitHub Pages on every push to `main`. See [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
-
-To enable it:
-1. Go to your repository **Settings → Pages**
-2. Set **Source** to **GitHub Actions**
-
----
-
-<div align="center">
-
-⭐ If you find this useful, give it a star on GitHub!
-
-</div>
