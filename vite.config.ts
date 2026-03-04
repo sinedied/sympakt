@@ -11,7 +11,13 @@ export default defineConfig({
     assetsInlineLimit: Infinity,
   },
   plugins: [
-    minifyHTMLLiterals(),
+    minifyHTMLLiterals({
+      options: {
+        minifyOptions: {
+          keepClosingSlash: true,
+        },
+      },
+    }),
     viteSingleFile(),
     ViteMinifyPlugin({
       collapseWhitespace: true,
