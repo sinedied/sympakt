@@ -115,6 +115,16 @@ export class SampleSlot extends LitElement {
         padding: 4px 8px;
       }
 
+      .danger.confirm {
+        background: var(--danger);
+        color: #000;
+        font-weight: bold;
+      }
+
+      .danger.confirm:hover {
+        color: var(--danger);
+      }
+
       input[type='file'] {
         display: none;
       }
@@ -127,9 +137,16 @@ export class SampleSlot extends LitElement {
   @state() private dragOver = false;
   @state() private dragging = false;
   @state() private playing = false;
+  @state() private confirmingRemove = false;
   private stopFn?: () => void;
+  private outsideClickHandler = this.onOutsideClick.bind(this);
 
   private fileInput?: HTMLInputElement;
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener('click', this.outsideClickHandler);
+  }
 
   override render() {
     const slotNum = String(this.index + 1).padStart(2, '0');
@@ -169,7 +186,9 @@ export class SampleSlot extends LitElement {
                 <button class="btn-play" @click=${this.togglePlay} title="Play/Stop">
                   ${this.playing ? '■' : '▶'}
                 </button>
-                <button class="danger" @click=${this.onRemove} title="Remove">✕</button>
+                ${this.confirmingRemove
+                  ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Confirm remove">✓</button>`
+                  : html`<button class="danger" @click=${this.onRemoveClick} title="Remove">✕</button>`}
               </div>
             `
           : html`
@@ -205,7 +224,18 @@ export class SampleSlot extends LitElement {
     input.value = '';
   }
 
-  private onRemove(): void {
+  private onRemoveClick(e: Event): void {
+    e.stopPropagation();
+    this.confirmingRemove = true;
+    requestAnimationFrame(() => {
+      document.addEventListener('click', this.outsideClickHandler, { once: true });
+    });
+  }
+
+  private onConfirmRemove(e: Event): void {
+    e.stopPropagation();
+    document.removeEventListener('click', this.outsideClickHandler);
+    this.confirmingRemove = false;
     this.stopPlayback();
     this.dispatchEvent(
       new CustomEvent('sample-remove', {
@@ -214,6 +244,10 @@ export class SampleSlot extends LitElement {
         composed: true,
       }),
     );
+  }
+
+  private onOutsideClick(): void {
+    this.confirmingRemove = false;
   }
 
   private togglePlay(): void {
