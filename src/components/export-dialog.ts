@@ -125,6 +125,7 @@ export class ExportDialog extends LitElement {
               type="text"
               .value=${this.packName}
               @input=${(e: Event) => (this.packName = (e.target as HTMLInputElement).value)}
+              title="Name used for the exported .zip file"
             />
           </div>
 
@@ -135,14 +136,15 @@ export class ExportDialog extends LitElement {
               .checked=${this.includeOriginals}
               @change=${(e: Event) =>
                 (this.includeOriginals = (e.target as HTMLInputElement).checked)}
+              title="Include unprocessed original audio files in the .zip for later re-editing"
             />
-            <label for="include-originals">Include original files</label>
+            <label for="include-originals" title="Include unprocessed original audio files in the .zip for later re-editing">Include original files</label>
           </div>
           <div class="field-hint">Allows further editing when re-imported</div>
 
           <div class="button-row">
-            <button @click=${this.close}>Cancel</button>
-            <button class="primary" @click=${this.onExport}>Export .zip</button>
+            <button @click=${this.close} title="Close without exporting">Cancel</button>
+            <button class="primary" @click=${this.onExport} title="Download the sample pack as a .zip file">Export .zip</button>
           </div>
         </div>
       </div>

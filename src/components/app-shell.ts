@@ -177,11 +177,12 @@ export class AppShell extends LitElement {
           <span class="subtitle">Sample Pack Manager</span>
         </div>
         <div class="toolbar">
-          <span class="slot-count">${filledSlots}/64</span>
+          <span class="slot-count" title="Filled slots out of 64">${filledSlots}/64</span>
           <button
             class=${this.headerDragOver ? 'import-highlight' : ''}
             @click=${this.onImportZip}
             ?disabled=${this.importing}
+            title="Import a sample pack from a .zip file (or drag & drop here)"
           >
             ${this.importing ? 'Importing...' : 'Import .zip'}
           </button>
@@ -189,10 +190,11 @@ export class AppShell extends LitElement {
             class="primary"
             @click=${this.onOpenExport}
             ?disabled=${filledSlots === 0 || this.exporting}
+            title="Export the current bank as a .zip sample pack"
           >
             ${this.exporting ? 'Exporting...' : 'Export .zip'}
           </button>
-          <button class="danger" @click=${this.onClearAll} ?disabled=${filledSlots === 0}>
+          <button class="danger" @click=${this.onClearAll} ?disabled=${filledSlots === 0} title="Remove all samples from the bank">
             Clear
           </button>
         </div>

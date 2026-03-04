@@ -189,34 +189,39 @@ export class SampleSlot extends LitElement {
                   @loop-change=${this.onLoopChange}
                 ></sp-waveform>
               `
-            : html`<div class="empty-slot" @click=${this.onClickImport}>Drop or click</div>`}
+            : html`<div class="empty-slot" @click=${this.onClickImport} title="Drop an audio file here or click to browse">Drop or click</div>`}
         </div>
 
         ${this.sample
           ? html`
               <span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>
-              <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}">
+              <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}"
+                title="${this.sample.loop
+                  ? 'Loop duration'
+                  : this.sample.isTruncated
+                    ? 'Sample will be truncated to 5s on export'
+                    : 'Sample duration'}">
                 ${this.sample.loop
                   ? formatDuration(this.sample.loop.endTime - this.sample.loop.startTime)
                   : formatDuration(Math.min(this.sample.duration, MAX_SAMPLE_DURATION))}
               </span>
               <div class="actions">
-                <button class="btn-play" @click=${this.togglePlay} title="Play/Stop">
+                <button class="btn-play" @click=${this.togglePlay} title="${this.playing ? 'Stop playback' : 'Preview sample'}">
                   ${this.playing ? '■' : '▶'}
                 </button>
                 <button
                   class="btn-loop ${this.sample.loop !== null ? 'active' : ''}"
                   @click=${this.toggleLoop}
-                  title="${this.sample.loop !== null ? 'Disable loop' : 'Enable loop'}"
+                  title="${this.sample.loop !== null ? 'Disable loop — export full sample (up to 5s)' : 'Enable loop — set loop points for seamless looping'}"
                 >⟳</button>
                 ${this.confirmingRemove
-                  ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Confirm remove">✓</button>`
-                  : html`<button class="danger" @click=${this.onRemoveClick} title="Remove">✕</button>`}
+                  ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Click to confirm removal">✓</button>`
+                  : html`<button class="danger" @click=${this.onRemoveClick} title="Remove sample from this slot">✕</button>`}
               </div>
             `
           : html`
               <div class="actions">
-                <button @click=${this.onClickImport}>+</button>
+                <button @click=${this.onClickImport} title="Add a sample to this slot">+</button>
               </div>
             `}
 
