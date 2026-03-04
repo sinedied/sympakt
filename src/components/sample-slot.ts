@@ -60,7 +60,7 @@ export class SampleSlot extends LitElement {
         flex: 1;
         height: 22px;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
       }
 
       .empty-slot {

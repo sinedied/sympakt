@@ -40,6 +40,16 @@ export class WaveformView extends LitElement {
         pointer-events: auto;
         cursor: default;
       }
+      .cf-label {
+        position: absolute;
+        bottom: calc(100% + 2px);
+        transform: translateX(-50%);
+        font-size: 9px;
+        font-family: sans-serif;
+        color: rgba(100, 160, 255, 0.95);
+        white-space: nowrap;
+        pointer-events: none;
+      }
     `,
   ];
 
@@ -207,14 +217,7 @@ export class WaveformView extends LitElement {
     this.drawDiamond(ctx, cfEndStartX, 5, 4, 'rgba(100, 160, 255, 0.95)');
 
     // Show crossfade duration label while dragging the crossfade handle
-    if (this.dragTarget === 'crossfade' && this.loop.crossfadeDuration > 0) {
-      const label = `${(this.loop.crossfadeDuration * 1000).toFixed(0)}ms`;
-      ctx.font = '9px sans-serif';
-      ctx.fillStyle = 'rgba(100, 160, 255, 0.95)';
-      const textWidth = ctx.measureText(label).width;
-      const labelX = Math.max(textWidth / 2 + 2, Math.min(cfEndStartX + (crossfadeWidth - textWidth) / 2, width - textWidth / 2 - 2));
-      ctx.fillText(label, labelX, height - 3);
-    }
+    // (rendered as HTML element in render() method)
 
     // Loop start handle
     ctx.fillStyle = '#00ccaa';
@@ -319,7 +322,7 @@ export class WaveformView extends LitElement {
           startTime: newStart,
           crossfadeDuration: Math.min(
             this.dragStartLoop.crossfadeDuration,
-            (this.dragStartLoop.endTime - newStart) * 0.5,
+            this.dragStartLoop.endTime - newStart,
           ),
         };
         break;
@@ -334,7 +337,7 @@ export class WaveformView extends LitElement {
           endTime: newEnd,
           crossfadeDuration: Math.min(
             this.dragStartLoop.crossfadeDuration,
-            (newEnd - this.dragStartLoop.startTime) * 0.5,
+            newEnd - this.dragStartLoop.startTime,
           ),
         };
         break;
@@ -356,8 +359,8 @@ export class WaveformView extends LitElement {
       case 'crossfade': {
         const loopLen = this.dragStartLoop.endTime - this.dragStartLoop.startTime;
         let newCf = this.dragStartLoop.crossfadeDuration - dtRaw;
-        // Crossfade can't exceed 50% of loop length or the available pre-start audio
-        const maxCf = Math.min(loopLen * 0.5, this.dragStartLoop.startTime);
+        // Crossfade can't exceed the loop length or the available pre-start audio
+        const maxCf = Math.min(loopLen, this.dragStartLoop.startTime);
         newCf = Math.max(0, Math.min(newCf, maxCf));
         newLoop = {
           ...this.dragStartLoop,
@@ -381,11 +384,11 @@ export class WaveformView extends LitElement {
     // Ensure values stay in bounds
     newLoop.startTime = Math.max(0, newLoop.startTime);
     newLoop.endTime = Math.min(newLoop.endTime, audioDuration);
-    // Crossfade can't exceed available pre-start audio or 50% of loop
+    // Crossfade can't exceed available pre-start audio or the loop length
     const finalLoopLen = newLoop.endTime - newLoop.startTime;
     newLoop.crossfadeDuration = Math.min(
       newLoop.crossfadeDuration,
-      finalLoopLen * 0.5,
+      finalLoopLen,
       newLoop.startTime,
     );
 
@@ -427,7 +430,18 @@ export class WaveformView extends LitElement {
     }
   };
 
+  private get cfLabelPosition(): number | null {
+    if (!this.loop || this.dragTarget !== 'crossfade' || this.loop.crossfadeDuration <= 0) return null;
+    const fullDuration = this.duration;
+    if (fullDuration <= 0) return null;
+    const endFrac = this.loop.endTime / fullDuration;
+    const cfFrac = this.loop.crossfadeDuration / fullDuration;
+    // Center of the crossfade zone at the end of the loop
+    return (endFrac - cfFrac / 2) * 100;
+  }
+
   override render() {
+    const cfPos = this.cfLabelPosition;
     return html`
       <canvas></canvas>
       ${this.loopEnabled
@@ -437,6 +451,11 @@ export class WaveformView extends LitElement {
             @mousemove=${this.onOverlayMouseMove}
           ></canvas>`
         : html`<canvas class="loop-overlay"></canvas>`}
+      ${cfPos !== null
+        ? html`<div class="cf-label" style="left: ${cfPos}%">
+            ${(this.loop!.crossfadeDuration * 1000).toFixed(0)}ms
+          </div>`
+        : ''}
     `;
   }
 }

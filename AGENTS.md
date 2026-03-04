@@ -105,7 +105,7 @@ npm run preview
   - Blue zones: crossfade blend region at end of loop + source region before loop start
   - Dimmed regions: audio outside the loop
 - **Crossfade approach**: the tail of the loop is blended with audio from *before* the loop start point (not from the beginning of the loop). This produces a natural seamless transition when playback wraps.
-- **Constraints**: loop duration ≤ 5s, crossfade ≤ 50% of loop length, crossfade ≤ available pre-start audio
+- **Constraints**: loop duration ≤ 5s, crossfade ≤ loop length, crossfade ≤ available pre-start audio
 - **Playback preview**: looped playback with crossfade baked in via Web Audio API `AudioBufferSourceNode.loop`
 - **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s
 - **ZIP roundtrip**: loop settings are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
