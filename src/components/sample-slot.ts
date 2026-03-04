@@ -365,14 +365,38 @@ export class SampleSlot extends LitElement {
     e.preventDefault();
     this.dragOver = false;
 
+    // Check for directory or file drops via DataTransferItem entries
+    const items = e.dataTransfer?.items;
+    if (items && items.length > 0) {
+      // Try to detect a folder drop using webkitGetAsEntry
+      const entry = items[0].webkitGetAsEntry?.();
+      if (entry?.isDirectory) {
+        this.handleFolderDrop(entry as FileSystemDirectoryEntry);
+        return;
+      }
+    }
+
     // Check if it's a file drop
     const files = e.dataTransfer?.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      if (file.type.startsWith('audio/') || file.name.match(/\.(wav|mp3|ogg|flac|aiff|m4a)$/i)) {
+      const audioFiles = Array.from(files).filter(
+        (f) => f.type.startsWith('audio/') || f.name.match(/\.(wav|mp3|ogg|flac|aiff|m4a)$/i),
+      );
+      if (audioFiles.length > 1) {
+        // Multiple audio files dropped — treat as batch
+        this.dispatchEvent(
+          new CustomEvent('sample-import-batch', {
+            detail: { index: this.index, files: audioFiles },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+        return;
+      }
+      if (audioFiles.length === 1) {
         this.dispatchEvent(
           new CustomEvent('sample-import', {
-            detail: { index: this.index, file },
+            detail: { index: this.index, file: audioFiles[0] },
             bubbles: true,
             composed: true,
           }),
@@ -393,10 +417,61 @@ export class SampleSlot extends LitElement {
       );
     }
   }
+
+  private async handleFolderDrop(dirEntry: FileSystemDirectoryEntry): Promise<void> {
+    const files = await readAudioFilesFromDirectory(dirEntry);
+    if (files.length > 0) {
+      this.dispatchEvent(
+        new CustomEvent('sample-import-batch', {
+          detail: { index: this.index, files },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
+  }
 }
 
 function formatDuration(seconds: number): string {
   return seconds.toFixed(2) + 's';
+}
+
+const AUDIO_EXT_RE = /\.(wav|mp3|ogg|flac|aiff|m4a)$/i;
+
+/** Read all audio files from a dropped directory entry, sorted by name.
+ *  Applies the same exclusion logic as ZIP import:
+ *  - skip macOS resource forks (._prefix, __MACOSX paths)
+ *  - skip non-audio files
+ *  - skip empty files
+ */
+async function readAudioFilesFromDirectory(dirEntry: FileSystemDirectoryEntry): Promise<File[]> {
+  const entries = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+    dirEntry.createReader().readEntries(resolve, reject);
+  });
+
+  const filtered = entries
+    .filter((entry): entry is FileSystemFileEntry => {
+      if (!entry.isFile) return false;
+      if (!AUDIO_EXT_RE.test(entry.name)) return false;
+      // Skip macOS resource fork files (._prefix)
+      if (entry.name.startsWith('._')) return false;
+      // Skip __MACOSX directory artifacts
+      if (entry.fullPath.includes('__MACOSX/')) return false;
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  const files = await Promise.all(
+    filtered.map(
+      (entry) =>
+        new Promise<File>((resolve, reject) => {
+          entry.file(resolve, reject);
+        }),
+    ),
+  );
+
+  // Skip empty files (same as ZIP import)
+  return files.filter((f) => f.size > 0);
 }
 
 declare global {

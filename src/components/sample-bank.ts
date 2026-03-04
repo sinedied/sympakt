@@ -3,6 +3,7 @@ import { customElement } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import { processAudioFile } from '../services/zip-service.js';
+import { MAX_SLOTS } from '../types/index.js';
 import type { LoopSettings } from '../types/index.js';
 import './sample-slot.js';
 
@@ -65,6 +66,7 @@ export class SampleBank extends LitElement {
               .index=${i}
               .sample=${sample}
               @sample-import=${this.onSampleImport}
+              @sample-import-batch=${this.onSampleImportBatch}
               @sample-remove=${this.onSampleRemove}
               @sample-move=${this.onSampleMove}
               @loop-update=${this.onLoopUpdate}
@@ -82,6 +84,21 @@ export class SampleBank extends LitElement {
       bankState.setSample(index, sample);
     } catch (err) {
       console.error('Failed to import sample:', err);
+    }
+  }
+
+  private async onSampleImportBatch(
+    e: CustomEvent<{ index: number; files: File[] }>,
+  ): Promise<void> {
+    const { index, files } = e.detail;
+    const limit = Math.min(files.length, MAX_SLOTS - index);
+    for (let i = 0; i < limit; i++) {
+      try {
+        const sample = await processAudioFile(files[i]);
+        bankState.setSample(index + i, sample);
+      } catch (err) {
+        console.error(`Failed to import sample ${files[i].name}:`, err);
+      }
     }
   }
 
