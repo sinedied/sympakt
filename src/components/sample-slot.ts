@@ -57,7 +57,7 @@ export class SampleSlot extends LitElement {
 
       .waveform-container {
         flex: 1;
-        height: 44px;
+        height: 22px;
         position: relative;
         overflow: hidden;
       }

@@ -24,7 +24,7 @@ export const theme = css`
     --scrollbar-thumb: #333333;
     --font-pixel: 'PixelFont', monospace;
     --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-    --slot-height: 64px;
+    --slot-height: 32px;
     --radius: 2px;
     --transition: 150ms ease;
   }

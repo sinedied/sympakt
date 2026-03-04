@@ -21,13 +21,34 @@ export class SampleBank extends LitElement {
       }
 
       .bank-list {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        grid-template-rows: repeat(64, auto);
+        align-content: start;
         gap: 2px;
         padding: 8px;
         height: 100%;
         overflow-y: auto;
         overflow-x: hidden;
+      }
+
+      @media (min-width: 900px) {
+        .bank-list {
+          grid-template-rows: repeat(32, auto);
+        }
+      }
+
+      @media (min-width: 1200px) {
+        .bank-list {
+          grid-template-rows: repeat(22, auto);
+        }
+      }
+
+      @media (min-width: 1600px) {
+        .bank-list {
+          grid-template-rows: repeat(16, auto);
+        }
       }
     `,
   ];
