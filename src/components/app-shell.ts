@@ -108,6 +108,11 @@ export class AppShell extends LitElement {
         color: var(--accent);
       }
 
+      footer .heart {
+        color: #e74c3c;
+        font-size: 8px;
+      }
+
       .notification {
         position: fixed;
         top: 16px;
@@ -206,8 +211,9 @@ export class AppShell extends LitElement {
 
       <footer>
         <span>
-          Sympakt · For the
-          <a href="https://www.elektron.se/syntakt" target="_blank" rel="noopener">Elektron Syntakt</a>
+          <a href="https://github.com/sinedied/sympakt" target="_blank" rel="noopener">Sympakt</a>
+          · Made with <span class="heart">♥</span> and vibes by
+          <a href="https://sinedied.github.io" target="_blank" rel="noopener">sinedied</a>
         </span>
       </footer>
 
