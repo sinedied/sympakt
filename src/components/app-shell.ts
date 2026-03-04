@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
+import { iconHeart } from '../icons.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import {
   exportSamplePack,
@@ -110,7 +111,8 @@ export class AppShell extends LitElement {
 
       footer .heart {
         color: #e74c3c;
-        font-size: 8px;
+        display: inline-flex;
+        vertical-align: middle;
       }
 
       .notification {
@@ -212,7 +214,7 @@ export class AppShell extends LitElement {
       <footer>
         <span>
           <a href="https://github.com/sinedied/sympakt" target="_blank" rel="noopener">Sympakt</a>
-          · Made with <span class="heart">♥</span> and vibes by
+          · Made with <span class="heart">${iconHeart}</span> and vibes by
           <a href="https://sinedied.github.io" target="_blank" rel="noopener">sinedied</a>
         </span>
       </footer>

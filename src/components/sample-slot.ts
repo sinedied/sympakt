@@ -4,6 +4,7 @@ import { theme, sharedStyles } from '../styles/theme.js';
 import { Sample, MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
 import type { LoopSettings } from '../types/index.js';
 import { playSample, playSampleLooped } from '../services/audio-engine.js';
+import { iconPlay, iconStop, iconLoop, iconCheck, iconClose, iconPlus } from '../icons.js';
 import './waveform-view.js';
 
 /**
@@ -109,11 +110,17 @@ export class SampleSlot extends LitElement {
         padding: 4px 6px;
         font-size: 7px;
         min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .btn-play {
         font-size: 10px;
         padding: 4px 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .danger.confirm {
@@ -129,6 +136,9 @@ export class SampleSlot extends LitElement {
       .btn-loop {
         font-size: 7px;
         padding: 4px 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .btn-loop.active {
@@ -219,26 +229,26 @@ export class SampleSlot extends LitElement {
               </span>
               <div class="actions">
                 <button class="btn-play" @click=${this.togglePlay} title="${this.playing ? 'Stop playback' : 'Preview sample'}">
-                  ${this.playing ? '■' : '▶'}
+                  ${this.playing ? iconStop : iconPlay}
                 </button>
                 <button
                   class="btn-loop ${this.sample.loop !== null ? 'active' : ''}"
                   @click=${this.toggleLoop}
                   title="${this.sample.loop !== null ? 'Disable loop — export full sample (up to 5s)' : 'Enable loop — set loop points for seamless looping'}"
-                >⟳</button>
+                >${iconLoop}</button>
                 <button
                   class="btn-lofi ${this.sample.lofi ? 'active' : ''}"
                   @click=${this.toggleLofi}
                   title="${this.sample.lofi ? 'Disable LOFI — 5s max, normal quality' : 'Enable LOFI — 10s max, pitched up 1 octave (half sample rate)'}"
                 >LO</button>
                 ${this.confirmingRemove
-                  ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Click to confirm removal">✓</button>`
-                  : html`<button class="danger" @click=${this.onRemoveClick} title="Remove sample from this slot">✕</button>`}
+                  ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Click to confirm removal">${iconCheck}</button>`
+                  : html`<button class="danger" @click=${this.onRemoveClick} title="Remove sample from this slot">${iconClose}</button>`}
               </div>
             `
           : html`
               <div class="actions">
-                <button @click=${this.onClickImport} title="Add a sample to this slot">+</button>
+                <button @click=${this.onClickImport} title="Add a sample to this slot">${iconPlus}</button>
               </div>
             `}
 

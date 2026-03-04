@@ -1,0 +1,85 @@
+import { svg } from 'lit';
+import type { SVGTemplateResult } from 'lit';
+
+const icon = (content: SVGTemplateResult, size = 12) => svg`
+  <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter">
+    ${content}
+  </svg>
+`;
+
+/** Filled play triangle */
+export const iconPlay = icon(svg`<polygon points="6,4 20,12 6,20" fill="currentColor" stroke="none" />`);
+
+/** Filled stop square */
+export const iconStop = icon(svg`<rect x="5" y="5" width="14" height="14" fill="currentColor" stroke="none" />`);
+
+/** Loop / cycle arrows */
+export const iconLoop = icon(svg`
+  <path d="M17 2l4 4-4 4" />
+  <path d="M3 12v-2a4 4 0 0 1 4-4h14" />
+  <path d="M7 22l-4-4 4-4" />
+  <path d="M21 12v2a4 4 0 0 1-4 4H3" />
+`);
+
+/** Checkmark */
+export const iconCheck = icon(svg`<polyline points="4,12 10,18 20,6" />`);
+
+/** X / close */
+export const iconClose = icon(svg`
+  <line x1="6" y1="6" x2="18" y2="18" />
+  <line x1="18" y1="6" x2="6" y2="18" />
+`);
+
+/** Plus */
+export const iconPlus = icon(svg`
+  <line x1="12" y1="5" x2="12" y2="19" />
+  <line x1="5" y1="12" x2="19" y2="12" />
+`);
+
+/** Heart (filled, pixel art) */
+export const iconHeart = svg`
+  <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 9 9"
+    fill="currentColor" shape-rendering="crispEdges">
+    <rect x="1" y="0" width="1" height="1"/>
+    <rect x="2" y="0" width="1" height="1"/>
+    <rect x="5" y="0" width="1" height="1"/>
+    <rect x="6" y="0" width="1" height="1"/>
+    <rect x="0" y="1" width="1" height="1"/>
+    <rect x="1" y="1" width="1" height="1"/>
+    <rect x="2" y="1" width="1" height="1"/>
+    <rect x="3" y="1" width="1" height="1"/>
+    <rect x="4" y="1" width="1" height="1"/>
+    <rect x="5" y="1" width="1" height="1"/>
+    <rect x="6" y="1" width="1" height="1"/>
+    <rect x="7" y="1" width="1" height="1"/>
+    <rect x="0" y="2" width="1" height="1"/>
+    <rect x="1" y="2" width="1" height="1"/>
+    <rect x="2" y="2" width="1" height="1"/>
+    <rect x="3" y="2" width="1" height="1"/>
+    <rect x="4" y="2" width="1" height="1"/>
+    <rect x="5" y="2" width="1" height="1"/>
+    <rect x="6" y="2" width="1" height="1"/>
+    <rect x="7" y="2" width="1" height="1"/>
+    <rect x="0" y="3" width="1" height="1"/>
+    <rect x="1" y="3" width="1" height="1"/>
+    <rect x="2" y="3" width="1" height="1"/>
+    <rect x="3" y="3" width="1" height="1"/>
+    <rect x="4" y="3" width="1" height="1"/>
+    <rect x="5" y="3" width="1" height="1"/>
+    <rect x="6" y="3" width="1" height="1"/>
+    <rect x="7" y="3" width="1" height="1"/>
+    <rect x="1" y="4" width="1" height="1"/>
+    <rect x="2" y="4" width="1" height="1"/>
+    <rect x="3" y="4" width="1" height="1"/>
+    <rect x="4" y="4" width="1" height="1"/>
+    <rect x="5" y="4" width="1" height="1"/>
+    <rect x="6" y="4" width="1" height="1"/>
+    <rect x="2" y="5" width="1" height="1"/>
+    <rect x="3" y="5" width="1" height="1"/>
+    <rect x="4" y="5" width="1" height="1"/>
+    <rect x="5" y="5" width="1" height="1"/>
+    <rect x="3" y="6" width="1" height="1"/>
+    <rect x="4" y="6" width="1" height="1"/>
+  </svg>
+`;
