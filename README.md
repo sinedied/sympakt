@@ -27,7 +27,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
 - **5-second truncation** — samples exceeding max duration are truncated with visual warning
 - **Original file preservation** — optionally include source files in the exported archive
-- **Metadata JSON** — each pack includes a `sympakt-metadata.json` with slot mappings, loop settings, and sample info
+- **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
 
 ## Getting Started
@@ -68,7 +68,7 @@ npm run preview   # preview the production build locally
 
 When importing a `.zip` file, Sympakt looks for:
 - WAV files named `NN_name.wav` (where NN is the slot number)
-- A `sympakt-metadata.json` file for sample metadata
+- A `sympakt.json` file for sample metadata
 - An `originals/` folder with source files (if they were included during export)
 
 ## Export Format
@@ -78,7 +78,7 @@ Exported `.zip` files contain:
 | Path | Description |
 |------|-------------|
 | `01_kick.wav` … `64_pad.wav` | 16-bit, 48 kHz, mono WAV files |
-| `sympakt-metadata.json` | Pack name, slot mappings, durations, loop settings, original filenames |
+| `sympakt.json` | Pack name, slot mappings, durations, loop settings, original filenames, , if "Include originals" is checked |
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 
 > [!NOTE]
