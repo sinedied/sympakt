@@ -1,7 +1,7 @@
 import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme } from '../styles/theme.js';
-import { MAX_SAMPLE_DURATION } from '../types/index.js';
+import { MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
 import type { LoopSettings } from '../types/index.js';
 import { findNearestZeroCrossing } from '../services/audio-engine.js';
 
@@ -59,10 +59,17 @@ export class WaveformView extends LitElement {
   @property({ type: Boolean }) loopEnabled = false;
   @property({ type: Object }) loop: LoopSettings | null = null;
   @property({ type: Object }) audioBuffer: AudioBuffer | null = null;
+  @property({ type: Boolean }) lofi = false;
 
   @state() private dragTarget: DragTarget = null;
   private dragStartX = 0;
   private dragStartLoop: LoopSettings | null = null;
+
+  private get effectiveMaxDuration(): number {
+    return this.lofi
+      ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR
+      : MAX_SAMPLE_DURATION;
+  }
 
   private canvas?: HTMLCanvasElement;
   private overlayCanvas?: HTMLCanvasElement;
@@ -84,10 +91,10 @@ export class WaveformView extends LitElement {
     // Re-query overlay canvas since Lit may swap the element
     this.updateOverlayRef();
 
-    if (changed.has('data') || changed.has('duration') || changed.has('truncated')) {
+    if (changed.has('data') || changed.has('duration') || changed.has('truncated') || changed.has('lofi')) {
       this.drawWaveform();
     }
-    if (changed.has('loop') || changed.has('loopEnabled') || changed.has('data') || changed.has('dragTarget')) {
+    if (changed.has('loop') || changed.has('loopEnabled') || changed.has('data') || changed.has('dragTarget') || changed.has('lofi')) {
       this.drawLoopOverlay();
     }
   }
@@ -124,8 +131,8 @@ export class WaveformView extends LitElement {
     const centerY = height / 2;
 
     const truncateCol =
-      this.truncated && this.duration > MAX_SAMPLE_DURATION
-        ? Math.floor((MAX_SAMPLE_DURATION / this.duration) * columns)
+      this.truncated && this.duration > this.effectiveMaxDuration
+        ? Math.floor((this.effectiveMaxDuration / this.duration) * columns)
         : columns;
 
     for (let i = 0; i < columns; i++) {
@@ -372,13 +379,14 @@ export class WaveformView extends LitElement {
         return;
     }
 
-    // Hard clamp: loop DURATION must never exceed MAX_SAMPLE_DURATION
+    // Hard clamp: loop DURATION must never exceed effective max duration
+    const effectiveMax = this.effectiveMaxDuration;
     const loopLen = newLoop.endTime - newLoop.startTime;
-    if (loopLen > MAX_SAMPLE_DURATION) {
+    if (loopLen > effectiveMax) {
       if (this.dragTarget === 'loop-start') {
-        newLoop.startTime = newLoop.endTime - MAX_SAMPLE_DURATION;
+        newLoop.startTime = newLoop.endTime - effectiveMax;
       } else {
-        newLoop.endTime = newLoop.startTime + MAX_SAMPLE_DURATION;
+        newLoop.endTime = newLoop.startTime + effectiveMax;
       }
     }
     // Ensure values stay in bounds

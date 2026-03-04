@@ -70,6 +70,7 @@ export class SampleBank extends LitElement {
               @sample-remove=${this.onSampleRemove}
               @sample-move=${this.onSampleMove}
               @loop-update=${this.onLoopUpdate}
+              @lofi-toggle=${this.onLofiToggle}
             ></sp-sample-slot>
           `,
         )}
@@ -112,6 +113,10 @@ export class SampleBank extends LitElement {
 
   private onLoopUpdate(e: CustomEvent<{ index: number; loop: LoopSettings | null }>): void {
     bankState.updateSampleLoop(e.detail.index, e.detail.loop);
+  }
+
+  private onLofiToggle(e: CustomEvent<{ index: number; lofi: boolean }>): void {
+    bankState.updateSampleLofi(e.detail.index, e.detail.lofi);
   }
 }
 

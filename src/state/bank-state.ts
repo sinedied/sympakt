@@ -1,5 +1,5 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import { Sample, MAX_SLOTS } from '../types/index.js';
+import { Sample, MAX_SLOTS, MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
 import type { LoopSettings } from '../types/index.js';
 
 type BankListener = () => void;
@@ -39,6 +39,34 @@ class BankStateStore {
     const sample = this.slots[index];
     if (!sample) return;
     this.slots[index] = { ...sample, loop };
+    this.notify();
+  }
+
+  /** Toggle LOFI mode for a sample, recalculating truncation and clamping loop if needed */
+  updateSampleLofi(index: number, lofi: boolean): void {
+    const sample = this.slots[index];
+    if (!sample) return;
+
+    const effectiveMax = lofi
+      ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR
+      : MAX_SAMPLE_DURATION;
+    const isTruncated = sample.duration > effectiveMax;
+
+    // When disabling LOFI, clamp loop duration if it exceeds the tighter limit
+    let loop = sample.loop;
+    if (loop && !lofi) {
+      const loopLen = loop.endTime - loop.startTime;
+      if (loopLen > MAX_SAMPLE_DURATION) {
+        const newEnd = Math.min(loop.startTime + MAX_SAMPLE_DURATION, sample.audioBuffer.duration);
+        loop = {
+          ...loop,
+          endTime: newEnd,
+          crossfadeDuration: Math.min(loop.crossfadeDuration, newEnd - loop.startTime, loop.startTime),
+        };
+      }
+    }
+
+    this.slots[index] = { ...sample, lofi, isTruncated, loop };
     this.notify();
   }
 

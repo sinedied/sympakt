@@ -7,6 +7,7 @@ import {
   MAX_SAMPLE_DURATION,
   MAX_SLOTS,
   METADATA_FILENAME,
+  LOFI_SPEED_FACTOR,
 } from '../types/index.js';
 import {
   decodeAudioFile,
@@ -34,20 +35,29 @@ export async function exportSamplePack(
     const slotNumber = String(i + 1).padStart(2, '0');
     const exportName = `${slotNumber}_${sanitizeFilename(sample.name)}.wav`;
 
-    // Resample to export format (48kHz mono)
-    const exportBuffer = await resampleToExportFormat(sample.audioBuffer);
+    // Resample to export format (48kHz mono), with 2× speed for LOFI
+    const speedFactor = sample.lofi ? LOFI_SPEED_FACTOR : 1;
+    const exportBuffer = await resampleToExportFormat(sample.audioBuffer, speedFactor);
     let pcm = getMonoPCM(exportBuffer);
 
     if (sample.loop) {
+      // Scale loop times for LOFI (buffer is at normal speed, export is at 2×)
+      const loopForExport = sample.lofi
+        ? {
+            startTime: sample.loop.startTime / LOFI_SPEED_FACTOR,
+            endTime: sample.loop.endTime / LOFI_SPEED_FACTOR,
+            crossfadeDuration: sample.loop.crossfadeDuration / LOFI_SPEED_FACTOR,
+          }
+        : sample.loop;
       // Looped: apply crossfade then extract only the loop region
-      if (sample.loop.crossfadeDuration > 0) {
-        pcm = applyCrossfade(pcm, sample.loop, exportBuffer.sampleRate);
+      if (loopForExport.crossfadeDuration > 0) {
+        pcm = applyCrossfade(pcm, loopForExport, exportBuffer.sampleRate);
       }
-      const startSample = Math.round(sample.loop.startTime * exportBuffer.sampleRate);
-      const endSample = Math.round(sample.loop.endTime * exportBuffer.sampleRate);
+      const startSample = Math.round(loopForExport.startTime * exportBuffer.sampleRate);
+      const endSample = Math.round(loopForExport.endTime * exportBuffer.sampleRate);
       pcm = pcm.slice(startSample, Math.min(endSample, pcm.length));
     } else {
-      // Non-looped: truncate to MAX_SAMPLE_DURATION
+      // Non-looped: truncate to MAX_SAMPLE_DURATION (5s of export time)
       const maxSamples = Math.round(MAX_SAMPLE_DURATION * exportBuffer.sampleRate);
       if (pcm.length > maxSamples) {
         pcm = pcm.slice(0, maxSamples);
@@ -63,9 +73,10 @@ export async function exportSamplePack(
       originalFileName: sample.originalFileName,
       duration: sample.loop
         ? sample.loop.endTime - sample.loop.startTime
-        : Math.min(sample.duration, MAX_SAMPLE_DURATION),
+        : Math.min(sample.duration, sample.lofi ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR : MAX_SAMPLE_DURATION),
       isTruncated: sample.isTruncated,
       loop: sample.loop ?? undefined,
+      lofi: sample.lofi || undefined,
     };
 
     // Optionally include original files
@@ -198,9 +209,10 @@ export async function importSamplePack(
         audioBuffer: resampled,
         waveformData,
         duration: audioBuffer.duration,
-        isTruncated: audioBuffer.duration > MAX_SAMPLE_DURATION,
+        isTruncated: audioBuffer.duration > (slotMeta?.lofi ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR : MAX_SAMPLE_DURATION),
         originalFile,
         loop: slotMeta?.loop ?? null,
+        lofi: slotMeta?.lofi ?? false,
       };
 
       slots[targetSlot] = sample;
@@ -238,6 +250,7 @@ export async function processAudioFile(file: File): Promise<Sample> {
     isTruncated: audioBuffer.duration > MAX_SAMPLE_DURATION,
     originalFile,
     loop: null,
+    lofi: false,
   };
 }
 

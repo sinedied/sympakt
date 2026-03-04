@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { Sample, MAX_SAMPLE_DURATION } from '../types/index.js';
+import { Sample, MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
 import type { LoopSettings } from '../types/index.js';
 import { playSample, playSampleLooped } from '../services/audio-engine.js';
 import './waveform-view.js';
@@ -137,6 +137,17 @@ export class SampleSlot extends LitElement {
         color: #000;
       }
 
+      .btn-lofi {
+        font-size: 7px;
+        padding: 4px 6px;
+      }
+
+      .btn-lofi.active {
+        background: var(--warning);
+        border-color: var(--warning);
+        color: #000;
+      }
+
       input[type='file'] {
         display: none;
       }
@@ -186,6 +197,7 @@ export class SampleSlot extends LitElement {
                   .loopEnabled=${this.sample.loop !== null}
                   .loop=${this.sample.loop}
                   .audioBuffer=${this.sample.audioBuffer}
+                  .lofi=${this.sample.lofi}
                   @loop-change=${this.onLoopChange}
                 ></sp-waveform>
               `
@@ -199,11 +211,11 @@ export class SampleSlot extends LitElement {
                 title="${this.sample.loop
                   ? 'Loop duration'
                   : this.sample.isTruncated
-                    ? 'Sample will be truncated to 5s on export'
+                    ? `Sample will be truncated to ${this.effectiveMaxDuration}s on export`
                     : 'Sample duration'}">
                 ${this.sample.loop
                   ? formatDuration(this.sample.loop.endTime - this.sample.loop.startTime)
-                  : formatDuration(Math.min(this.sample.duration, MAX_SAMPLE_DURATION))}
+                  : formatDuration(Math.min(this.sample.duration, this.effectiveMaxDuration))}
               </span>
               <div class="actions">
                 <button class="btn-play" @click=${this.togglePlay} title="${this.playing ? 'Stop playback' : 'Preview sample'}">
@@ -214,6 +226,11 @@ export class SampleSlot extends LitElement {
                   @click=${this.toggleLoop}
                   title="${this.sample.loop !== null ? 'Disable loop — export full sample (up to 5s)' : 'Enable loop — set loop points for seamless looping'}"
                 >⟳</button>
+                <button
+                  class="btn-lofi ${this.sample.lofi ? 'active' : ''}"
+                  @click=${this.toggleLofi}
+                  title="${this.sample.lofi ? 'Disable LOFI — 5s max, normal quality' : 'Enable LOFI — 10s max, pitched up 1 octave (half sample rate)'}"
+                >LO</button>
                 ${this.confirmingRemove
                   ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Click to confirm removal">✓</button>`
                   : html`<button class="danger" @click=${this.onRemoveClick} title="Remove sample from this slot">✕</button>`}
@@ -278,10 +295,17 @@ export class SampleSlot extends LitElement {
     this.confirmingRemove = false;
   }
 
+  private get effectiveMaxDuration(): number {
+    return this.sample?.lofi
+      ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR
+      : MAX_SAMPLE_DURATION;
+  }
+
   private toggleLoop(): void {
     if (!this.sample) return;
+    const effectiveMax = this.effectiveMaxDuration;
     const audioDuration = this.sample.audioBuffer.duration;
-    const loopEnd = Math.min(audioDuration, MAX_SAMPLE_DURATION);
+    const loopEnd = Math.min(audioDuration, effectiveMax);
     // Start at 10% to allow room for default 10% crossfade
     const loopStart = loopEnd * 0.1;
     const loopDuration = loopEnd - loopStart;
@@ -312,6 +336,18 @@ export class SampleSlot extends LitElement {
     );
   }
 
+  private toggleLofi(): void {
+    if (!this.sample) return;
+    this.stopPlayback();
+    this.dispatchEvent(
+      new CustomEvent('lofi-toggle', {
+        detail: { index: this.index, lofi: !this.sample.lofi },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   private togglePlay(): void {
     if (this.playing) {
       this.stopPlayback();
@@ -323,16 +359,17 @@ export class SampleSlot extends LitElement {
   private startPlayback(): void {
     if (!this.sample) return;
     this.playing = true;
+    const lofi = this.sample.lofi;
 
     if (this.sample.loop) {
       // Looped playback with crossfade — no auto-stop
-      playSampleLooped(this.sample.audioBuffer, this.sample.loop).then((stop) => {
+      playSampleLooped(this.sample.audioBuffer, this.sample.loop, lofi).then((stop) => {
         this.stopFn = stop;
       });
     } else {
-      this.stopFn = playSample(this.sample.audioBuffer);
-      // Auto-stop after duration
-      const dur = Math.min(this.sample.duration, MAX_SAMPLE_DURATION);
+      this.stopFn = playSample(this.sample.audioBuffer, 0, lofi);
+      // Auto-stop after effective duration
+      const dur = Math.min(this.sample.duration, this.effectiveMaxDuration);
       setTimeout(() => this.stopPlayback(), dur * 1000);
     }
   }

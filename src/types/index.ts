@@ -18,6 +18,8 @@ export interface Sample {
   originalFile: Uint8Array;
   /** Loop settings (null = no loop) */
   loop: LoopSettings | null;
+  /** Whether LOFI mode is enabled (2× speed export for 10s effective max duration) */
+  lofi: boolean;
 }
 
 /** Loop point and crossfade settings for seamless looping */
@@ -49,6 +51,8 @@ export interface SlotMetadata {
   isTruncated: boolean;
   /** Loop settings (omitted if no loop) */
   loop?: LoopSettings;
+  /** Whether LOFI mode is enabled */
+  lofi?: boolean;
 }
 
 /** Export options presented to the user */
@@ -65,3 +69,4 @@ export const EXPORT_BIT_DEPTH = 16;
 export const EXPORT_CHANNELS = 1; // mono
 export const WAVEFORM_COLUMNS = 200; // number of columns in waveform display
 export const METADATA_FILENAME = 'sympakt.json';
+export const LOFI_SPEED_FACTOR = 2; // playback speed multiplier for LOFI mode

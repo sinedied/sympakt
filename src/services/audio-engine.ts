@@ -2,8 +2,14 @@ import {
   EXPORT_SAMPLE_RATE,
   EXPORT_CHANNELS,
   WAVEFORM_COLUMNS,
+  LOFI_SPEED_FACTOR,
   LoopSettings,
 } from '../types/index.js';
+
+/** Cutoff frequency for LOFI preview lowpass filter.
+ *  Simulates the reduced bandwidth from exporting at 2× speed:
+ *  effective Nyquist = EXPORT_SAMPLE_RATE / (2 × LOFI_SPEED_FACTOR) = 12 kHz */
+const LOFI_CUTOFF = EXPORT_SAMPLE_RATE / (2 * LOFI_SPEED_FACTOR);
 
 let audioContext: AudioContext | null = null;
 
@@ -25,12 +31,16 @@ export async function decodeAudioFile(data: ArrayBuffer): Promise<AudioBuffer> {
 /**
  * Resample and convert an AudioBuffer to mono, 48 kHz.
  * Returns the resampled AudioBuffer (full duration preserved).
+ * When speedFactor > 1, the audio is played faster (pitched up),
+ * producing a shorter buffer (used for LOFI export).
  */
 export async function resampleToExportFormat(
   buffer: AudioBuffer,
+  speedFactor = 1,
 ): Promise<AudioBuffer> {
   const duration = buffer.duration;
-  const length = Math.ceil(duration * EXPORT_SAMPLE_RATE);
+  const outputDuration = duration / speedFactor;
+  const length = Math.ceil(outputDuration * EXPORT_SAMPLE_RATE);
 
   const offline = new OfflineAudioContext(
     EXPORT_CHANNELS,
@@ -40,6 +50,7 @@ export async function resampleToExportFormat(
 
   const source = offline.createBufferSource();
   source.buffer = buffer;
+  source.playbackRate.value = speedFactor;
   source.connect(offline.destination);
   source.start(0, 0, duration);
 
@@ -74,16 +85,29 @@ export function generateWaveformData(
 
 /**
  * Play a sample from an AudioBuffer at a given offset (seconds).
+ * When lofi is true, a lowpass filter simulates the reduced bandwidth
+ * of the LOFI export (12 kHz cutoff).
  * Returns a function to stop playback.
  */
 export function playSample(
   buffer: AudioBuffer,
   offset = 0,
+  lofi = false,
 ): () => void {
   const ctx = getAudioContext();
   const source = ctx.createBufferSource();
   source.buffer = buffer;
-  source.connect(ctx.destination);
+
+  if (lofi) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = LOFI_CUTOFF;
+    source.connect(filter);
+    filter.connect(ctx.destination);
+  } else {
+    source.connect(ctx.destination);
+  }
+
   source.start(0, offset);
 
   return () => {
@@ -104,6 +128,7 @@ export function playSample(
 export async function playSampleLooped(
   buffer: AudioBuffer,
   loop: LoopSettings,
+  lofi = false,
 ): Promise<() => void> {
   const ctx = getAudioContext();
   const sampleRate = buffer.sampleRate;
@@ -147,7 +172,17 @@ export async function playSampleLooped(
   const source = ctx.createBufferSource();
   source.buffer = loopBuffer;
   source.loop = true;
-  source.connect(ctx.destination);
+
+  if (lofi) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = LOFI_CUTOFF;
+    source.connect(filter);
+    filter.connect(ctx.destination);
+  } else {
+    source.connect(ctx.destination);
+  }
+
   source.start();
 
   return () => {
