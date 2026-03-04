@@ -1,5 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { Sample, MAX_SLOTS } from '../types/index.js';
+import type { LoopSettings } from '../types/index.js';
 
 type BankListener = () => void;
 
@@ -31,6 +32,14 @@ class BankStateStore {
   /** Remove a sample from a slot */
   removeSample(index: number): void {
     this.setSample(index, null);
+  }
+
+  /** Update loop settings for a sample in a slot */
+  updateSampleLoop(index: number, loop: LoopSettings | null): void {
+    const sample = this.slots[index];
+    if (!sample) return;
+    this.slots[index] = { ...sample, loop };
+    this.notify();
   }
 
   /** Move a sample from one slot to another, shifting others */

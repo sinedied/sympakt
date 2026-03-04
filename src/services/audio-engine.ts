@@ -1,8 +1,8 @@
 import {
   EXPORT_SAMPLE_RATE,
   EXPORT_CHANNELS,
-  MAX_SAMPLE_DURATION,
   WAVEFORM_COLUMNS,
+  LoopSettings,
 } from '../types/index.js';
 
 let audioContext: AudioContext | null = null;
@@ -24,12 +24,12 @@ export async function decodeAudioFile(data: ArrayBuffer): Promise<AudioBuffer> {
 
 /**
  * Resample and convert an AudioBuffer to mono, 48 kHz.
- * Returns the resampled AudioBuffer (max MAX_SAMPLE_DURATION seconds).
+ * Returns the resampled AudioBuffer (full duration preserved).
  */
 export async function resampleToExportFormat(
   buffer: AudioBuffer,
 ): Promise<AudioBuffer> {
-  const duration = Math.min(buffer.duration, MAX_SAMPLE_DURATION);
+  const duration = buffer.duration;
   const length = Math.ceil(duration * EXPORT_SAMPLE_RATE);
 
   const offline = new OfflineAudioContext(
@@ -96,8 +96,148 @@ export function playSample(
 }
 
 /**
+ * Play a sample in a looping region with crossfade applied.
+ * The crossfade blends the tail of the loop with audio from BEFORE
+ * the loop start point for a natural seamless transition.
+ * Returns a stop function.
+ */
+export async function playSampleLooped(
+  buffer: AudioBuffer,
+  loop: LoopSettings,
+): Promise<() => void> {
+  const ctx = getAudioContext();
+  const sampleRate = buffer.sampleRate;
+
+  const loopStartSample = Math.round(loop.startTime * sampleRate);
+  const loopEndSample = Math.round(loop.endTime * sampleRate);
+  const loopLengthSamples = loopEndSample - loopStartSample;
+
+  if (loopLengthSamples <= 0) {
+    return playSample(buffer, loop.startTime);
+  }
+
+  // Extract the loop region
+  const loopPcm = new Float32Array(loopLengthSamples);
+  const srcData = buffer.getChannelData(0);
+  for (let i = 0; i < loopLengthSamples; i++) {
+    const idx = loopStartSample + i;
+    loopPcm[i] = idx < srcData.length ? srcData[idx] : 0;
+  }
+
+  // Apply crossfade: blend tail of loop with audio BEFORE the start point
+  const crossfadeSamples = Math.round(loop.crossfadeDuration * sampleRate);
+  if (crossfadeSamples > 0 && crossfadeSamples <= loopLengthSamples) {
+    for (let i = 0; i < crossfadeSamples; i++) {
+      const fadeOut = 1 - i / crossfadeSamples;
+      const fadeIn = i / crossfadeSamples;
+      const endIdx = loopLengthSamples - crossfadeSamples + i;
+      // Source from before the loop start (pre-start audio)
+      const preStartIdx = loopStartSample - crossfadeSamples + i;
+      const preStartSample = (preStartIdx >= 0 && preStartIdx < srcData.length)
+        ? srcData[preStartIdx]
+        : 0;
+      loopPcm[endIdx] = loopPcm[endIdx] * fadeOut + preStartSample * fadeIn;
+    }
+  }
+
+  // Create an AudioBuffer for the loop region
+  const loopBuffer = ctx.createBuffer(1, loopLengthSamples, sampleRate);
+  loopBuffer.getChannelData(0).set(loopPcm);
+
+  const source = ctx.createBufferSource();
+  source.buffer = loopBuffer;
+  source.loop = true;
+  source.connect(ctx.destination);
+  source.start();
+
+  return () => {
+    try {
+      source.stop();
+    } catch {
+      // already stopped
+    }
+  };
+}
+
+/**
  * Extract raw Float32 PCM data from an AudioBuffer (mono, first channel).
  */
 export function getMonoPCM(buffer: AudioBuffer): Float32Array {
   return buffer.getChannelData(0);
+}
+
+/**
+ * Find the nearest zero crossing to a given time in seconds.
+ * Searches within a small window around the target time.
+ * A zero crossing is where the waveform crosses from positive to negative or vice versa.
+ */
+export function findNearestZeroCrossing(
+  buffer: AudioBuffer,
+  targetTime: number,
+  searchWindowSeconds = 0.005,
+): number {
+  const pcm = buffer.getChannelData(0);
+  const sampleRate = buffer.sampleRate;
+  const targetSample = Math.round(targetTime * sampleRate);
+  const windowSamples = Math.round(searchWindowSeconds * sampleRate);
+  const searchStart = Math.max(0, targetSample - windowSamples);
+  const searchEnd = Math.min(pcm.length - 1, targetSample + windowSamples);
+
+  let bestSample = targetSample;
+  let bestDist = Infinity;
+
+  for (let i = searchStart; i < searchEnd; i++) {
+    // Zero crossing: sign change between consecutive samples
+    if ((pcm[i] >= 0 && pcm[i + 1] < 0) || (pcm[i] < 0 && pcm[i + 1] >= 0)) {
+      const dist = Math.abs(i - targetSample);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestSample = i;
+      }
+    }
+  }
+
+  return Math.max(0, Math.min(bestSample / sampleRate, buffer.duration));
+}
+
+/**
+ * Apply a linear crossfade to a looped region of PCM data.
+ * Blends the tail of the loop with audio from BEFORE the loop start point.
+ * This creates a natural seamless transition when the loop wraps.
+ * Returns a new Float32Array with the crossfade applied.
+ */
+export function applyCrossfade(
+  pcm: Float32Array,
+  loop: LoopSettings,
+  sampleRate: number,
+): Float32Array {
+  const result = new Float32Array(pcm);
+  const loopStartSample = Math.round(loop.startTime * sampleRate);
+  const loopEndSample = Math.round(loop.endTime * sampleRate);
+  const crossfadeSamples = Math.round(loop.crossfadeDuration * sampleRate);
+
+  if (crossfadeSamples <= 0) return result;
+
+  const loopLength = loopEndSample - loopStartSample;
+  if (crossfadeSamples > loopLength) return result;
+
+  // Apply crossfade at the end of the loop region:
+  // Fade out the last N samples of the loop, fade in N samples from before the start
+  for (let i = 0; i < crossfadeSamples; i++) {
+    const fadeOut = 1 - i / crossfadeSamples; // 1 → 0
+    const fadeIn = i / crossfadeSamples;       // 0 → 1
+
+    const endIdx = loopEndSample - crossfadeSamples + i;
+    // Source from before the loop start
+    const preStartIdx = loopStartSample - crossfadeSamples + i;
+    const preStartSample = (preStartIdx >= 0 && preStartIdx < result.length)
+      ? pcm[preStartIdx]
+      : 0;
+
+    if (endIdx >= 0 && endIdx < result.length) {
+      result[endIdx] = result[endIdx] * fadeOut + preStartSample * fadeIn;
+    }
+  }
+
+  return result;
 }

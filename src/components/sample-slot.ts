@@ -2,7 +2,8 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 import { Sample, MAX_SAMPLE_DURATION } from '../types/index.js';
-import { playSample } from '../services/audio-engine.js';
+import type { LoopSettings } from '../types/index.js';
+import { playSample, playSampleLooped } from '../services/audio-engine.js';
 import './waveform-view.js';
 
 /**
@@ -125,6 +126,17 @@ export class SampleSlot extends LitElement {
         color: var(--danger);
       }
 
+      .btn-loop {
+        font-size: 7px;
+        padding: 4px 6px;
+      }
+
+      .btn-loop.active {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+        color: #000;
+      }
+
       input[type='file'] {
         display: none;
       }
@@ -171,6 +183,10 @@ export class SampleSlot extends LitElement {
                   .data=${this.sample.waveformData}
                   .duration=${this.sample.duration}
                   .truncated=${this.sample.isTruncated}
+                  .loopEnabled=${this.sample.loop !== null}
+                  .loop=${this.sample.loop}
+                  .audioBuffer=${this.sample.audioBuffer}
+                  @loop-change=${this.onLoopChange}
                 ></sp-waveform>
               `
             : html`<div class="empty-slot" @click=${this.onClickImport}>Drop or click</div>`}
@@ -179,13 +195,20 @@ export class SampleSlot extends LitElement {
         ${this.sample
           ? html`
               <span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>
-              <span class="duration ${this.sample.isTruncated ? 'truncated' : ''}">
-                ${formatDuration(Math.min(this.sample.duration, MAX_SAMPLE_DURATION))}
+              <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}">
+                ${this.sample.loop
+                  ? formatDuration(this.sample.loop.endTime - this.sample.loop.startTime)
+                  : formatDuration(Math.min(this.sample.duration, MAX_SAMPLE_DURATION))}
               </span>
               <div class="actions">
                 <button class="btn-play" @click=${this.togglePlay} title="Play/Stop">
                   ${this.playing ? '■' : '▶'}
                 </button>
+                <button
+                  class="btn-loop ${this.sample.loop !== null ? 'active' : ''}"
+                  @click=${this.toggleLoop}
+                  title="${this.sample.loop !== null ? 'Disable loop' : 'Enable loop'}"
+                >⟳</button>
                 ${this.confirmingRemove
                   ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Confirm remove">✓</button>`
                   : html`<button class="danger" @click=${this.onRemoveClick} title="Remove">✕</button>`}
@@ -250,6 +273,40 @@ export class SampleSlot extends LitElement {
     this.confirmingRemove = false;
   }
 
+  private toggleLoop(): void {
+    if (!this.sample) return;
+    const audioDuration = this.sample.audioBuffer.duration;
+    const loopEnd = Math.min(audioDuration, MAX_SAMPLE_DURATION);
+    // Start at 10% to allow room for default 10% crossfade
+    const loopStart = loopEnd * 0.1;
+    const loopDuration = loopEnd - loopStart;
+    const newLoop: LoopSettings | null = this.sample.loop
+      ? null
+      : {
+          startTime: loopStart,
+          endTime: loopEnd,
+          crossfadeDuration: loopDuration * 0.1,
+        };
+
+    this.dispatchEvent(
+      new CustomEvent('loop-update', {
+        detail: { index: this.index, loop: newLoop },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onLoopChange(e: CustomEvent<LoopSettings>): void {
+    this.dispatchEvent(
+      new CustomEvent('loop-update', {
+        detail: { index: this.index, loop: e.detail },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   private togglePlay(): void {
     if (this.playing) {
       this.stopPlayback();
@@ -261,11 +318,18 @@ export class SampleSlot extends LitElement {
   private startPlayback(): void {
     if (!this.sample) return;
     this.playing = true;
-    this.stopFn = playSample(this.sample.audioBuffer);
 
-    // Auto-stop after duration
-    const dur = Math.min(this.sample.duration, MAX_SAMPLE_DURATION);
-    setTimeout(() => this.stopPlayback(), dur * 1000);
+    if (this.sample.loop) {
+      // Looped playback with crossfade — no auto-stop
+      playSampleLooped(this.sample.audioBuffer, this.sample.loop).then((stop) => {
+        this.stopFn = stop;
+      });
+    } else {
+      this.stopFn = playSample(this.sample.audioBuffer);
+      // Auto-stop after duration
+      const dur = Math.min(this.sample.duration, MAX_SAMPLE_DURATION);
+      setTimeout(() => this.stopPlayback(), dur * 1000);
+    }
   }
 
   private stopPlayback(): void {

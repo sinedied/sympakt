@@ -49,10 +49,12 @@ src/
 - **No backend** — everything runs client-side
 - **Minimal dependencies** — prefer browser APIs over libraries
 - **Export format**: 16-bit, 48kHz, mono WAV (Syntakt requirement)
-- **Max sample length**: 5 seconds — truncate on import with visual warning
+- **Max sample length**: looped samples export only the loop region; non-looped samples are truncated to 5 seconds
+- **Max loop duration**: 5 seconds
 - **Bank size**: exactly 64 slots
 - **File naming on export**: `<slot_number>_<sample_name>.wav` (e.g., `01_kick.wav`)
-- **Metadata**: JSON file included in exported ZIP with original filenames, sample options, and structure
+- **Metadata**: JSON file included in exported ZIP with original filenames, sample options, loop settings, and structure
+- **Audio buffer preservation**: full audio duration is kept in memory (no truncation at import); truncation/extraction happens only at export time
 
 ## Development Workflow
 
@@ -89,10 +91,24 @@ npm run preview
 ## Audio Processing Notes
 
 - Decoding: use `AudioContext.decodeAudioData()` for broad format support
-- Resampling: use `OfflineAudioContext` at 48kHz to resample imported audio
+- Resampling: use `OfflineAudioContext` at 48kHz to resample imported audio (full duration preserved)
 - Waveform generation: compute RMS values per pixel column from decoded PCM data
-- Truncation: if sample > 5s, keep first 5s; highlight truncated region in orange on waveform
+- Truncation: non-looped samples > 5s show orange truncated region on waveform; truncation happens at export
 - WAV encoding: manual PCM encoding to ArrayBuffer (no library needed)
+
+## Loop Editing
+
+- **Toggle**: each slot has a loop button (⟳); enabling sets loop from 10% to end of sample (capped at 5s) with 10% crossfade duration
+- **Loop overlay**: interactive canvas overlay on the waveform with draggable handles
+  - Green handles: loop start/end points (auto-snap to zero crossings)
+  - Blue diamond at top: crossfade duration handle
+  - Blue zones: crossfade blend region at end of loop + source region before loop start
+  - Dimmed regions: audio outside the loop
+- **Crossfade approach**: the tail of the loop is blended with audio from *before* the loop start point (not from the beginning of the loop). This produces a natural seamless transition when playback wraps.
+- **Constraints**: loop duration ≤ 5s, crossfade ≤ 50% of loop length, crossfade ≤ available pre-start audio
+- **Playback preview**: looped playback with crossfade baked in via Web Audio API `AudioBufferSourceNode.loop`
+- **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s
+- **ZIP roundtrip**: loop settings are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
 
 ## Security Considerations
 

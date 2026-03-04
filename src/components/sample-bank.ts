@@ -3,6 +3,7 @@ import { customElement } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import { processAudioFile } from '../services/zip-service.js';
+import type { LoopSettings } from '../types/index.js';
 import './sample-slot.js';
 
 /**
@@ -66,6 +67,7 @@ export class SampleBank extends LitElement {
               @sample-import=${this.onSampleImport}
               @sample-remove=${this.onSampleRemove}
               @sample-move=${this.onSampleMove}
+              @loop-update=${this.onLoopUpdate}
             ></sp-sample-slot>
           `,
         )}
@@ -89,6 +91,10 @@ export class SampleBank extends LitElement {
 
   private onSampleMove(e: CustomEvent<{ from: number; to: number }>): void {
     bankState.moveSample(e.detail.from, e.detail.to);
+  }
+
+  private onLoopUpdate(e: CustomEvent<{ index: number; loop: LoopSettings | null }>): void {
+    bankState.updateSampleLoop(e.detail.index, e.detail.loop);
   }
 }
 

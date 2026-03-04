@@ -21,11 +21,13 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 
 - **64-slot sample bank** — vertically scrollable grid with drag-and-drop reordering
 - **In-browser audio playback** — preview any sample instantly
+- **Seamless loop editing** — interactive waveform overlay with draggable start/end handles that snap to zero crossings
+- **Crossfade looping** — adjustable crossfade blends the loop tail with pre-start audio for click-free seamless loops
 - **ZIP import/export** — load and save complete sample packs as `.zip` files
 - **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
 - **5-second truncation** — samples exceeding max duration are truncated with visual warning
 - **Original file preservation** — optionally include source files in the exported archive
-- **Metadata JSON** — each pack includes a `sympakt-metadata.json` with slot mappings and sample info
+- **Metadata JSON** — each pack includes a `sympakt-metadata.json` with slot mappings, loop settings, and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
 
 ## Getting Started
@@ -57,9 +59,10 @@ npm run preview   # preview the production build locally
 1. **Import samples** — drag audio files onto any slot, or click the `+` button to browse
 2. **Reorder** — drag slots to rearrange the bank
 3. **Preview** — click ▶ on any slot to play the sample
-4. **Remove** — click ✕ to clear a slot
-5. **Import a pack** — click **Import .zip** to load a previously exported sample pack
-6. **Export** — click **Export .zip**, set a pack name, and optionally include original files
+4. **Loop** — click ⟳ to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
+5. **Remove** — click ✕ to clear a slot (requires confirmation)
+6. **Import a pack** — click **Import .zip** to load a previously exported sample pack
+7. **Export** — click **Export .zip**, set a pack name, and optionally include original files
 
 ### Import from ZIP
 
@@ -75,8 +78,8 @@ Exported `.zip` files contain:
 | Path | Description |
 |------|-------------|
 | `01_kick.wav` … `64_pad.wav` | 16-bit, 48 kHz, mono WAV files |
-| `sympakt-metadata.json` | Pack name, slot mappings, durations, original filenames |
+| `sympakt-metadata.json` | Pack name, slot mappings, durations, loop settings, original filenames |
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 
 > [!NOTE]
-> Samples longer than 5 seconds are automatically truncated on export. The waveform preview highlights the truncated portion in orange.
+> Non-looped samples longer than 5 seconds are automatically truncated on export. Looped samples export only the selected loop region with crossfade applied.

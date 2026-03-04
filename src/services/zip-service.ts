@@ -12,6 +12,7 @@ import {
   resampleToExportFormat,
   generateWaveformData,
   getMonoPCM,
+  applyCrossfade,
 } from './audio-engine.js';
 import { encodeWav } from './wav-encoder.js';
 
@@ -32,9 +33,26 @@ export async function exportSamplePack(
     const slotNumber = String(i + 1).padStart(2, '0');
     const exportName = `${slotNumber}_${sanitizeFilename(sample.name)}.wav`;
 
-    // Resample & truncate to export format
+    // Resample to export format (48kHz mono)
     const exportBuffer = await resampleToExportFormat(sample.audioBuffer);
-    const pcm = getMonoPCM(exportBuffer);
+    let pcm = getMonoPCM(exportBuffer);
+
+    if (sample.loop) {
+      // Looped: apply crossfade then extract only the loop region
+      if (sample.loop.crossfadeDuration > 0) {
+        pcm = applyCrossfade(pcm, sample.loop, exportBuffer.sampleRate);
+      }
+      const startSample = Math.round(sample.loop.startTime * exportBuffer.sampleRate);
+      const endSample = Math.round(sample.loop.endTime * exportBuffer.sampleRate);
+      pcm = pcm.slice(startSample, Math.min(endSample, pcm.length));
+    } else {
+      // Non-looped: truncate to MAX_SAMPLE_DURATION
+      const maxSamples = Math.round(MAX_SAMPLE_DURATION * exportBuffer.sampleRate);
+      if (pcm.length > maxSamples) {
+        pcm = pcm.slice(0, maxSamples);
+      }
+    }
+
     const wavData = encodeWav(pcm);
     files[exportName] = new Uint8Array(wavData);
 
@@ -42,8 +60,11 @@ export async function exportSamplePack(
       slot: i + 1,
       name: sample.name,
       originalFileName: sample.originalFileName,
-      duration: Math.min(sample.duration, MAX_SAMPLE_DURATION),
+      duration: sample.loop
+        ? sample.loop.endTime - sample.loop.startTime
+        : Math.min(sample.duration, MAX_SAMPLE_DURATION),
       isTruncated: sample.isTruncated,
+      loop: sample.loop ?? undefined,
     };
 
     // Optionally include original files
@@ -114,20 +135,22 @@ export async function importSamplePack(
   for (const entry of wavEntries) {
     if (entry.slotIndex < 0 || entry.slotIndex >= 64) continue;
 
-    const audioBuffer = await decodeAudioFile(entry.data.buffer as ArrayBuffer);
-    const resampled = await resampleToExportFormat(audioBuffer);
-    const waveformData = generateWaveformData(audioBuffer);
-
     // Determine original filename from metadata if available
     const slotMeta = metadata?.slots.find((s) => s.slot === entry.slotIndex + 1);
     const name = slotMeta?.name ?? stripExtension(entry.filename.replace(/^\d{2}_/, ''));
     const originalFileName = slotMeta?.originalFileName ?? entry.filename;
 
-    // Try to get original file bytes from originals/ folder
+    // Prefer original file for decoding if available
     let originalFile = entry.data;
+    let audioSourceData: ArrayBuffer = entry.data.buffer as ArrayBuffer;
     if (slotMeta?.originalFilePath && unzipped[slotMeta.originalFilePath]) {
       originalFile = unzipped[slotMeta.originalFilePath];
+      audioSourceData = originalFile.buffer as ArrayBuffer;
     }
+
+    const audioBuffer = await decodeAudioFile(audioSourceData);
+    const resampled = await resampleToExportFormat(audioBuffer);
+    const waveformData = generateWaveformData(resampled);
 
     const sample: Sample = {
       id: crypto.randomUUID(),
@@ -138,6 +161,7 @@ export async function importSamplePack(
       duration: audioBuffer.duration,
       isTruncated: audioBuffer.duration > MAX_SAMPLE_DURATION,
       originalFile,
+      loop: slotMeta?.loop ?? null,
     };
 
     slots[entry.slotIndex] = sample;
@@ -168,6 +192,7 @@ export async function processAudioFile(file: File): Promise<Sample> {
     duration: audioBuffer.duration,
     isTruncated: audioBuffer.duration > MAX_SAMPLE_DURATION,
     originalFile,
+    loop: null,
   };
 }
 

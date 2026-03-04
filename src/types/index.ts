@@ -16,6 +16,18 @@ export interface Sample {
   isTruncated: boolean;
   /** The original file bytes (kept for optional re-export) */
   originalFile: Uint8Array;
+  /** Loop settings (null = no loop) */
+  loop: LoopSettings | null;
+}
+
+/** Loop point and crossfade settings for seamless looping */
+export interface LoopSettings {
+  /** Loop start time in seconds (snapped to zero crossing) */
+  startTime: number;
+  /** Loop end time in seconds (snapped to zero crossing) */
+  endTime: number;
+  /** Crossfade duration in seconds (0 = no crossfade, max = loop length) */
+  crossfadeDuration: number;
 }
 
 /** Metadata stored in the exported JSON file */
@@ -34,6 +46,8 @@ export interface SlotMetadata {
   originalFilePath?: string;
   duration: number;
   isTruncated: boolean;
+  /** Loop settings (omitted if no loop) */
+  loop?: LoopSettings;
 }
 
 /** Export options presented to the user */
