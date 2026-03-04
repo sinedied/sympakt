@@ -173,11 +173,15 @@ export async function importSamplePack(
 
     // Prefer original file for decoding if available
     let originalFile = entry.data;
-    let audioSourceData: ArrayBuffer = entry.data.buffer as ArrayBuffer;
+    let audioSourceData: ArrayBuffer;
     if (slotMeta?.originalFilePath && unzipped[slotMeta.originalFilePath]) {
       originalFile = unzipped[slotMeta.originalFilePath];
-      audioSourceData = originalFile.buffer as ArrayBuffer;
     }
+    // Slice a copy for decoding — decodeAudioData detaches the buffer
+    audioSourceData = (originalFile.buffer as ArrayBuffer).slice(
+      originalFile.byteOffset,
+      originalFile.byteOffset + originalFile.byteLength,
+    );
 
     const audioBuffer = await decodeAudioFile(audioSourceData);
     const resampled = await resampleToExportFormat(audioBuffer);
@@ -212,7 +216,7 @@ export async function importSamplePack(
  */
 export async function processAudioFile(file: File): Promise<Sample> {
   const arrayBuffer = await file.arrayBuffer();
-  const originalFile = new Uint8Array(arrayBuffer);
+  const originalFile = new Uint8Array(arrayBuffer.slice(0));
   const audioBuffer = await decodeAudioFile(arrayBuffer);
   const resampled = await resampleToExportFormat(audioBuffer);
   const waveformData = generateWaveformData(audioBuffer);
