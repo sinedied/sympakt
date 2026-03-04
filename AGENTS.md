@@ -100,7 +100,7 @@ npm run preview
 - Decoding: use `AudioContext.decodeAudioData()` for broad format support
 - Resampling: use `OfflineAudioContext` at 48kHz to resample imported audio (full duration preserved)
 - Waveform generation: compute RMS values per pixel column from decoded PCM data
-- Truncation: non-looped samples > 5s (or > 10s in LOFI mode) show orange truncated region on waveform; truncation happens at export
+- Truncation: non-looped samples > 5s (or > 10s in LOFI, > 20s in XLOFI mode) show orange truncated region on waveform; truncation happens at export
 - WAV encoding: manual PCM encoding to ArrayBuffer (no library needed)
 
 ## Loop Editing
@@ -112,20 +112,26 @@ npm run preview
   - Blue zones: crossfade blend region at end of loop + source region before loop start
   - Dimmed regions: audio outside the loop
 - **Crossfade approach**: the tail of the loop is blended with audio from *before* the loop start point (not from the beginning of the loop). This produces a natural seamless transition when playback wraps.
-- **Constraints**: loop duration ≤ 5s (≤ 10s in LOFI mode), crossfade ≤ loop length, crossfade ≤ available pre-start audio
+- **Constraints**: loop duration ≤ 5s (≤ 10s in LOFI, ≤ 20s in XLOFI mode), crossfade ≤ loop length, crossfade ≤ available pre-start audio
 - **Playback preview**: looped playback with crossfade baked in via Web Audio API `AudioBufferSourceNode.loop`
-- **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s (10s in LOFI mode)
-- **ZIP roundtrip**: loop settings and LOFI flag are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
+- **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s (10s in LOFI, 20s in XLOFI mode)
+- **ZIP roundtrip**: loop settings and LOFI mode are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
 
-## LOFI Mode
+## LOFI / XLOFI Mode
 
-- **Purpose**: doubles the effective max sample time from 5s to 10s by exporting the audio at 2× speed (pitched up one octave). On the Syntakt, the user plays the sample pitched down one octave to hear the original sound.
-- **Toggle**: each slot has a **LO** button; when active it turns orange.
-- **Effective durations**: `MAX_SAMPLE_DURATION × LOFI_SPEED_FACTOR` (currently 5s × 2 = 10s) for truncation, loop constraints, and waveform display.
-- **Export**: `resampleToExportFormat(buffer, speedFactor=2)` produces a buffer at 2× playback speed; loop times are scaled by `1/LOFI_SPEED_FACTOR` in the export domain.
-- **Preview playback**: plays at normal 1× rate with a **lowpass filter** at 12 kHz (`EXPORT_SAMPLE_RATE / (2 × LOFI_SPEED_FACTOR)`) to simulate the reduced bandwidth of the final exported audio.
-- **State**: `Sample.lofi: boolean`, toggled via `bankState.updateSampleLofi()`. Toggling recalculates `isTruncated` and clamps loop duration when disabling LOFI.
-- **Metadata**: `lofi` flag is saved/restored in `sympakt.json` for ZIP roundtrip.
+- **Purpose**: extends the effective max sample time beyond 5s by exporting audio at higher playback speed. LOFI (2× speed, one octave up) gives 10s; XLOFI (4× speed, two octaves up) gives 20s. On the Syntakt, the user pitches the sample down accordingly to hear the original sound.
+- **Three-state toggle**: each slot has a **LO** button that cycles: off → LOFI (orange) → XLOFI (pink, label changes to **XL**) → off.
+- **Type**: `LofiMode = 'off' | 'lofi' | 'xlofi'` — replaces the old boolean. `normalizeLofiMode()` handles backward-compatible deserialization of legacy `true`/`false` values.
+- **Helper functions** (in `types/index.ts`):
+  - `getLofiSpeedFactor(mode)` → 1, 2, or 4
+  - `getEffectiveMaxDuration(mode)` → 5, 10, or 20
+  - `isLofiActive(mode)` → boolean
+  - `normalizeLofiMode(value)` → converts legacy boolean to LofiMode
+- **Effective durations**: `MAX_SAMPLE_DURATION × getLofiSpeedFactor(mode)` for truncation, loop constraints, and waveform display.
+- **Export**: `resampleToExportFormat(buffer, speedFactor)` produces a buffer at N× playback speed; loop times are scaled by `1/speedFactor` in the export domain.
+- **Preview playback**: plays at normal 1× rate with a **lowpass filter** at `EXPORT_SAMPLE_RATE / (2 × speedFactor)` to simulate the reduced bandwidth of the final exported audio (12 kHz for LOFI, 6 kHz for XLOFI).
+- **State**: `Sample.lofi: LofiMode`, cycled via `bankState.updateSampleLofi()`. Changing mode recalculates `isTruncated` and clamps loop duration when reducing the effective max.
+- **Metadata**: `lofi` field is saved/restored in `sympakt.json` for ZIP roundtrip. Legacy `true`/`false` values are auto-converted to `'lofi'`/`'off'`.
 
 ## Icons
 

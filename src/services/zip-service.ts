@@ -7,7 +7,10 @@ import {
   MAX_SAMPLE_DURATION,
   MAX_SLOTS,
   METADATA_FILENAME,
-  LOFI_SPEED_FACTOR,
+  getLofiSpeedFactor,
+  getEffectiveMaxDuration,
+  isLofiActive,
+  normalizeLofiMode,
 } from '../types/index.js';
 import {
   decodeAudioFile,
@@ -35,18 +38,19 @@ export async function exportSamplePack(
     const slotNumber = String(i + 1).padStart(2, '0');
     const exportName = `${slotNumber}_${sanitizeFilename(sample.name)}.wav`;
 
-    // Resample to export format (48kHz mono), with 2× speed for LOFI
-    const speedFactor = sample.lofi ? LOFI_SPEED_FACTOR : 1;
+    // Resample to export format (48kHz mono), with speed factor for LOFI/XLOFI
+    const speedFactor = getLofiSpeedFactor(sample.lofi);
     const exportBuffer = await resampleToExportFormat(sample.audioBuffer, speedFactor);
     let pcm = getMonoPCM(exportBuffer);
 
     if (sample.loop) {
-      // Scale loop times for LOFI (buffer is at normal speed, export is at 2×)
-      const loopForExport = sample.lofi
+      // Scale loop times for LOFI/XLOFI (buffer is at normal speed, export is sped up)
+      const sf = speedFactor;
+      const loopForExport = isLofiActive(sample.lofi)
         ? {
-            startTime: sample.loop.startTime / LOFI_SPEED_FACTOR,
-            endTime: sample.loop.endTime / LOFI_SPEED_FACTOR,
-            crossfadeDuration: sample.loop.crossfadeDuration / LOFI_SPEED_FACTOR,
+            startTime: sample.loop.startTime / sf,
+            endTime: sample.loop.endTime / sf,
+            crossfadeDuration: sample.loop.crossfadeDuration / sf,
           }
         : sample.loop;
       // Looped: apply crossfade then extract only the loop region
@@ -73,10 +77,10 @@ export async function exportSamplePack(
       originalFileName: sample.originalFileName,
       duration: sample.loop
         ? sample.loop.endTime - sample.loop.startTime
-        : Math.min(sample.duration, sample.lofi ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR : MAX_SAMPLE_DURATION),
+        : Math.min(sample.duration, getEffectiveMaxDuration(sample.lofi)),
       isTruncated: sample.isTruncated,
       loop: sample.loop ?? undefined,
-      lofi: sample.lofi || undefined,
+      lofi: isLofiActive(sample.lofi) ? sample.lofi : undefined,
     };
 
     // Optionally include original files
@@ -202,6 +206,7 @@ export async function importSamplePack(
       const resampled = await resampleToExportFormat(audioBuffer);
       const waveformData = generateWaveformData(resampled);
 
+      const lofiMode = normalizeLofiMode(slotMeta?.lofi);
       const sample: Sample = {
         id: crypto.randomUUID(),
         name,
@@ -209,10 +214,10 @@ export async function importSamplePack(
         audioBuffer: resampled,
         waveformData,
         duration: audioBuffer.duration,
-        isTruncated: audioBuffer.duration > (slotMeta?.lofi ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR : MAX_SAMPLE_DURATION),
+        isTruncated: audioBuffer.duration > getEffectiveMaxDuration(lofiMode),
         originalFile,
         loop: slotMeta?.loop ?? null,
-        lofi: slotMeta?.lofi ?? false,
+        lofi: lofiMode,
       };
 
       slots[targetSlot] = sample;
@@ -250,7 +255,7 @@ export async function processAudioFile(file: File): Promise<Sample> {
     isTruncated: audioBuffer.duration > MAX_SAMPLE_DURATION,
     originalFile,
     loop: null,
-    lofi: false,
+    lofi: 'off',
   };
 }
 

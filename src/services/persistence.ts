@@ -1,4 +1,5 @@
-import type { Sample, LoopSettings } from '../types/index.js';
+import type { Sample, LoopSettings, LofiMode } from '../types/index.js';
+import { normalizeLofiMode } from '../types/index.js';
 import { generateWaveformData } from './audio-engine.js';
 
 const DB_NAME = 'sympakt-db';
@@ -20,7 +21,7 @@ interface StoredSample {
   isTruncated: boolean;
   originalFile: Uint8Array;
   loop: LoopSettings | null;
-  lofi: boolean;
+  lofi: LofiMode | boolean;
 }
 
 /** Settings persisted across sessions */
@@ -89,7 +90,7 @@ function deserializeSample(stored: StoredSample): Sample {
     isTruncated: stored.isTruncated,
     originalFile: stored.originalFile,
     loop: stored.loop,
-    lofi: stored.lofi,
+    lofi: normalizeLofiMode(stored.lofi),
   };
 }
 

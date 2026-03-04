@@ -1,8 +1,8 @@
 import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme } from '../styles/theme.js';
-import { MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
-import type { LoopSettings } from '../types/index.js';
+import { getEffectiveMaxDuration } from '../types/index.js';
+import type { LoopSettings, LofiMode } from '../types/index.js';
 import { findNearestZeroCrossing } from '../services/audio-engine.js';
 
 type DragTarget = 'loop-start' | 'loop-end' | 'loop-region' | 'crossfade' | null;
@@ -59,16 +59,14 @@ export class WaveformView extends LitElement {
   @property({ type: Boolean }) loopEnabled = false;
   @property({ type: Object }) loop: LoopSettings | null = null;
   @property({ type: Object }) audioBuffer: AudioBuffer | null = null;
-  @property({ type: Boolean }) lofi = false;
+  @property({ type: String }) lofi: LofiMode = 'off';
 
   @state() private dragTarget: DragTarget = null;
   private dragStartX = 0;
   private dragStartLoop: LoopSettings | null = null;
 
   private get effectiveMaxDuration(): number {
-    return this.lofi
-      ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR
-      : MAX_SAMPLE_DURATION;
+    return getEffectiveMaxDuration(this.lofi);
   }
 
   private canvas?: HTMLCanvasElement;

@@ -1,3 +1,6 @@
+/** LOFI mode: off = normal, lofi = 2× speed (10s max), xlofi = 4× speed (20s max) */
+export type LofiMode = 'off' | 'lofi' | 'xlofi';
+
 /** Represents a single sample in the bank */
 export interface Sample {
   /** Unique identifier */
@@ -18,8 +21,8 @@ export interface Sample {
   originalFile: Uint8Array;
   /** Loop settings (null = no loop) */
   loop: LoopSettings | null;
-  /** Whether LOFI mode is enabled (2× speed export for 10s effective max duration) */
-  lofi: boolean;
+  /** LOFI mode: off, lofi (2× speed, 10s max), or xlofi (4× speed, 20s max) */
+  lofi: LofiMode;
 }
 
 /** Loop point and crossfade settings for seamless looping */
@@ -51,8 +54,8 @@ export interface SlotMetadata {
   isTruncated: boolean;
   /** Loop settings (omitted if no loop) */
   loop?: LoopSettings;
-  /** Whether LOFI mode is enabled */
-  lofi?: boolean;
+  /** LOFI mode (omitted or 'off' = normal) */
+  lofi?: LofiMode | boolean;
 }
 
 /** Export options presented to the user */
@@ -70,3 +73,30 @@ export const EXPORT_CHANNELS = 1; // mono
 export const WAVEFORM_COLUMNS = 200; // number of columns in waveform display
 export const METADATA_FILENAME = 'sympakt.json';
 export const LOFI_SPEED_FACTOR = 2; // playback speed multiplier for LOFI mode
+export const XLOFI_SPEED_FACTOR = 4; // playback speed multiplier for XLOFI mode
+
+/** Get the speed factor for a given LOFI mode */
+export function getLofiSpeedFactor(mode: LofiMode): number {
+  switch (mode) {
+    case 'xlofi': return XLOFI_SPEED_FACTOR;
+    case 'lofi': return LOFI_SPEED_FACTOR;
+    default: return 1;
+  }
+}
+
+/** Get the effective max sample duration for a given LOFI mode */
+export function getEffectiveMaxDuration(mode: LofiMode): number {
+  return MAX_SAMPLE_DURATION * getLofiSpeedFactor(mode);
+}
+
+/** Whether any LOFI mode is active */
+export function isLofiActive(mode: LofiMode): boolean {
+  return mode !== 'off';
+}
+
+/** Normalize legacy boolean lofi values to LofiMode */
+export function normalizeLofiMode(value: LofiMode | boolean | undefined): LofiMode {
+  if (value === true) return 'lofi';
+  if (value === false || value === undefined) return 'off';
+  return value;
+}

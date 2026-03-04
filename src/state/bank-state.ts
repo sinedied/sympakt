@@ -1,6 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import { Sample, MAX_SLOTS, MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
-import type { LoopSettings } from '../types/index.js';
+import { Sample, MAX_SLOTS, getEffectiveMaxDuration } from '../types/index.js';
+import type { LoopSettings, LofiMode } from '../types/index.js';
 import { saveBank, loadBank, clearAll as clearPersistedData } from '../services/persistence.js';
 
 type BankListener = () => void;
@@ -45,21 +45,19 @@ class BankStateStore {
   }
 
   /** Toggle LOFI mode for a sample, recalculating truncation and clamping loop if needed */
-  updateSampleLofi(index: number, lofi: boolean): void {
+  updateSampleLofi(index: number, lofi: LofiMode): void {
     const sample = this.slots[index];
     if (!sample) return;
 
-    const effectiveMax = lofi
-      ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR
-      : MAX_SAMPLE_DURATION;
+    const effectiveMax = getEffectiveMaxDuration(lofi);
     const isTruncated = sample.duration > effectiveMax;
 
-    // When disabling LOFI, clamp loop duration if it exceeds the tighter limit
+    // When reducing effective max (e.g. xlofi→lofi, lofi→off), clamp loop duration if needed
     let loop = sample.loop;
-    if (loop && !lofi) {
+    if (loop) {
       const loopLen = loop.endTime - loop.startTime;
-      if (loopLen > MAX_SAMPLE_DURATION) {
-        const newEnd = Math.min(loop.startTime + MAX_SAMPLE_DURATION, sample.audioBuffer.duration);
+      if (loopLen > effectiveMax) {
+        const newEnd = Math.min(loop.startTime + effectiveMax, sample.audioBuffer.duration);
         loop = {
           ...loop,
           endTime: newEnd,

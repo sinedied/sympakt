@@ -1,8 +1,8 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { Sample, MAX_SAMPLE_DURATION, LOFI_SPEED_FACTOR } from '../types/index.js';
-import type { LoopSettings } from '../types/index.js';
+import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration } from '../types/index.js';
+import type { LoopSettings, LofiMode } from '../types/index.js';
 import { playSample, playSampleLooped } from '../services/audio-engine.js';
 import { iconPlay, iconStop, iconLoop, iconCheck, iconClose, iconPlus } from '../icons.js';
 import './waveform-view.js';
@@ -159,6 +159,12 @@ export class SampleSlot extends LitElement {
         color: #000;
       }
 
+      .btn-lofi.xlofi {
+        background: #ff4488;
+        border-color: #ff4488;
+        color: #000;
+      }
+
       input[type='file'] {
         display: none;
       }
@@ -238,10 +244,10 @@ export class SampleSlot extends LitElement {
                   title="${this.sample.loop !== null ? 'Disable loop — export full sample (up to 5s)' : 'Enable loop — set loop points for seamless looping'}"
                 >${iconLoop}</button>
                 <button
-                  class="btn-lofi ${this.sample.lofi ? 'active' : ''}"
+                  class="btn-lofi ${this.lofiButtonClass}"
                   @click=${this.toggleLofi}
-                  title="${this.sample.lofi ? 'Disable LOFI — 5s max, normal quality' : 'Enable LOFI — 10s max, pitched up 1 octave (half sample rate)'}"
-                >LO</button>
+                  title="${this.lofiButtonTitle}"
+                >${this.lofiButtonLabel}</button>
                 ${this.confirmingRemove
                   ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Click to confirm removal">${iconCheck}</button>`
                   : html`<button class="danger" @click=${this.onRemoveClick} title="Remove sample from this slot">${iconClose}</button>`}
@@ -307,9 +313,32 @@ export class SampleSlot extends LitElement {
   }
 
   private get effectiveMaxDuration(): number {
-    return this.sample?.lofi
-      ? MAX_SAMPLE_DURATION * LOFI_SPEED_FACTOR
+    return this.sample
+      ? getEffectiveMaxDuration(this.sample.lofi)
       : MAX_SAMPLE_DURATION;
+  }
+
+  private get lofiButtonClass(): string {
+    if (!this.sample) return '';
+    switch (this.sample.lofi) {
+      case 'xlofi': return 'xlofi';
+      case 'lofi': return 'active';
+      default: return '';
+    }
+  }
+
+  private get lofiButtonLabel(): string {
+    if (!this.sample) return 'LO';
+    return this.sample.lofi === 'xlofi' ? 'XL' : 'LO';
+  }
+
+  private get lofiButtonTitle(): string {
+    if (!this.sample) return '';
+    switch (this.sample.lofi) {
+      case 'xlofi': return 'Disable XLOFI — click to return to normal (5s max)';
+      case 'lofi': return 'Enable XLOFI — 20s max, pitched up 2 octaves (quarter sample rate)';
+      default: return 'Enable LOFI — 10s max, pitched up 1 octave (half sample rate)';
+    }
   }
 
   private toggleLoop(): void {
@@ -350,9 +379,12 @@ export class SampleSlot extends LitElement {
   private toggleLofi(): void {
     if (!this.sample) return;
     this.stopPlayback();
+    const nextMode: LofiMode =
+      this.sample.lofi === 'off' ? 'lofi' :
+      this.sample.lofi === 'lofi' ? 'xlofi' : 'off';
     this.dispatchEvent(
       new CustomEvent('lofi-toggle', {
-        detail: { index: this.index, lofi: !this.sample.lofi },
+        detail: { index: this.index, lofi: nextMode },
         bubbles: true,
         composed: true,
       }),

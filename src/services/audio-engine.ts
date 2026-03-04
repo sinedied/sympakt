@@ -2,14 +2,18 @@ import {
   EXPORT_SAMPLE_RATE,
   EXPORT_CHANNELS,
   WAVEFORM_COLUMNS,
-  LOFI_SPEED_FACTOR,
   LoopSettings,
+  LofiMode,
+  getLofiSpeedFactor,
+  isLofiActive,
 } from '../types/index.js';
 
-/** Cutoff frequency for LOFI preview lowpass filter.
- *  Simulates the reduced bandwidth from exporting at 2× speed:
- *  effective Nyquist = EXPORT_SAMPLE_RATE / (2 × LOFI_SPEED_FACTOR) = 12 kHz */
-const LOFI_CUTOFF = EXPORT_SAMPLE_RATE / (2 * LOFI_SPEED_FACTOR);
+/** Compute cutoff frequency for LOFI preview lowpass filter.
+ *  Simulates the reduced bandwidth from exporting at N× speed:
+ *  effective Nyquist = EXPORT_SAMPLE_RATE / (2 × speedFactor) */
+function getLofiCutoff(mode: LofiMode): number {
+  return EXPORT_SAMPLE_RATE / (2 * getLofiSpeedFactor(mode));
+}
 
 let audioContext: AudioContext | null = null;
 
@@ -85,23 +89,23 @@ export function generateWaveformData(
 
 /**
  * Play a sample from an AudioBuffer at a given offset (seconds).
- * When lofi is true, a lowpass filter simulates the reduced bandwidth
- * of the LOFI export (12 kHz cutoff).
+ * When lofi mode is active, a lowpass filter simulates the reduced bandwidth
+ * of the LOFI/XLOFI export.
  * Returns a function to stop playback.
  */
 export function playSample(
   buffer: AudioBuffer,
   offset = 0,
-  lofi = false,
+  lofi: LofiMode = 'off',
 ): () => void {
   const ctx = getAudioContext();
   const source = ctx.createBufferSource();
   source.buffer = buffer;
 
-  if (lofi) {
+  if (isLofiActive(lofi)) {
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = LOFI_CUTOFF;
+    filter.frequency.value = getLofiCutoff(lofi);
     source.connect(filter);
     filter.connect(ctx.destination);
   } else {
@@ -128,7 +132,7 @@ export function playSample(
 export async function playSampleLooped(
   buffer: AudioBuffer,
   loop: LoopSettings,
-  lofi = false,
+  lofi: LofiMode = 'off',
 ): Promise<() => void> {
   const ctx = getAudioContext();
   const sampleRate = buffer.sampleRate;
@@ -173,10 +177,10 @@ export async function playSampleLooped(
   source.buffer = loopBuffer;
   source.loop = true;
 
-  if (lofi) {
+  if (isLofiActive(lofi)) {
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = LOFI_CUTOFF;
+    filter.frequency.value = getLofiCutoff(lofi);
     source.connect(filter);
     filter.connect(ctx.destination);
   } else {

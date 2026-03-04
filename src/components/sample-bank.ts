@@ -4,7 +4,7 @@ import { theme, sharedStyles } from '../styles/theme.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import { processAudioFile } from '../services/zip-service.js';
 import { MAX_SLOTS } from '../types/index.js';
-import type { LoopSettings } from '../types/index.js';
+import type { LoopSettings, LofiMode } from '../types/index.js';
 import './sample-slot.js';
 
 /**
@@ -115,7 +115,7 @@ export class SampleBank extends LitElement {
     bankState.updateSampleLoop(e.detail.index, e.detail.loop);
   }
 
-  private onLofiToggle(e: CustomEvent<{ index: number; lofi: boolean }>): void {
+  private onLofiToggle(e: CustomEvent<{ index: number; lofi: LofiMode }>): void {
     bankState.updateSampleLofi(e.detail.index, e.detail.lofi);
   }
 }
