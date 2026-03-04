@@ -1,12 +1,12 @@
 # Sympakt
 
-A single-page application for managing sample packs for the Elektron Sympakt synthesizer. Built as a client-only web app — all audio processing happens in the browser.
+A single-page application for managing sample packs for the Elektron Syntakt synthesizer. Built as a client-only web app — all audio processing happens in the browser.
 
 ## Overview
 
-- **Purpose**: Create, edit, preview, and export 64-slot sample banks compatible with the Elektron Sympakt
+- **Purpose**: Create, edit, preview, and export 64-slot sample banks compatible with the Elektron Syntakt
 - **Architecture**: Frontend-only SPA using Lit web components, Vite build tooling, TypeScript
-- **Audience**: Elektron Sympakt owners who want to manage their sample packs from the browser
+- **Audience**: Elektron Syntakt owners who want to manage their sample packs from the browser
 - **Deployment**: GitHub Pages (static site)
 
 ## Project Structure
@@ -48,7 +48,7 @@ src/
 
 - **No backend** — everything runs client-side
 - **Minimal dependencies** — prefer browser APIs over libraries
-- **Export format**: 16-bit, 48kHz, mono WAV (Sympakt requirement)
+- **Export format**: 16-bit, 48kHz, mono WAV (Syntakt requirement)
 - **Max sample length**: 5 seconds — truncate on import with visual warning
 - **Bank size**: exactly 64 slots
 - **File naming on export**: `<slot_number>_<sample_name>.wav` (e.g., `01_kick.wav`)

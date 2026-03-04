@@ -2,14 +2,14 @@
 
 # SYMPAKT
 
-**Sample Pack Manager for the Elektron Sympakt**
+**Sample Pack Manager for the Elektron Syntakt**
 
 [![Built with Lit](https://img.shields.io/badge/Built_with-Lit-324FFF?style=flat-square)](https://lit.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6+-646CFF?style=flat-square)](https://vite.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-Create, preview, and export 64-slot sample banks for the [Elektron Sympakt](https://www.elektron.se/sympakt) — entirely in the browser.
+Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](https://www.elektron.se/syntakt) — entirely in the browser.
 
 [Features](#features) · [Getting Started](#getting-started) · [Usage](#usage) · [Export Format](#export-format)
 
@@ -23,7 +23,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Sympakt](http
 - **Pixelated waveform previews** — Elektron-inspired visual style using Web Audio API analysis
 - **In-browser audio playback** — preview any sample instantly
 - **ZIP import/export** — load and save complete sample packs as `.zip` files
-- **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Sympakt format)
+- **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
 - **5-second truncation** — samples exceeding max duration are truncated with visual warning
 - **Original file preservation** — optionally include source files in the exported archive
 - **Metadata JSON** — each pack includes a `sympakt-metadata.json` with slot mappings and sample info

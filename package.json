@@ -2,7 +2,7 @@
   "name": "sympackt",
   "version": "0.1.0",
   "private": true,
-  "description": "Sample pack manager for the Elektron Sympakt",
+  "description": "Sample pack manager for the Elektron Syntakt",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -188,7 +188,7 @@ export class AppShell extends LitElement {
       <footer>
         <span>
           Sympakt · For the
-          <a href="https://www.elektron.se/sympakt" target="_blank" rel="noopener">Elektron Sympakt</a>
+          <a href="https://www.elektron.se/syntakt" target="_blank" rel="noopener">Elektron Syntakt</a>
         </span>
       </footer>
 
