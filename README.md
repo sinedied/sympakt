@@ -9,36 +9,23 @@
 [![Vite](https://img.shields.io/badge/Vite-6+-646CFF?style=flat-square)](https://vite.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](https://www.elektron.se/syntakt) — entirely in the browser.
-
 [Features](#features) · [Getting Started](#getting-started) · [Usage](#usage) · [Export Format](#export-format)
 
 ⭐ If you find this useful, give it a star on GitHub!
 
 </div>
 
+Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](https://www.elektron.se/syntakt), entirely from your browser.
+
 ## Features
 
-- **64-slot sample bank** — vertically scrollable grid with drag-and-drop reordering
-- **In-browser audio playback** — preview any sample instantly
-- **Seamless loop editing** — interactive waveform overlay with draggable start/end handles that snap to zero crossings
-- **Crossfade looping** — adjustable crossfade blends the loop tail with pre-start audio for click-free seamless loops
-- **ZIP import/export** — load and save complete sample packs as `.zip` files
-- **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
-- **5-second truncation** — samples exceeding max duration are truncated with visual warning
-- **LOFI / XLOFI mode** — extends max sample time to 10s (LOFI, 2× speed) or 20s (XLOFI, 4× speed) by exporting pitched up; preview simulates the bandwidth reduction with a lowpass filter
-- **Dual sample mode** — pack two samples into one slot (A and B); on the Syntakt, sample A plays normally and sample B is accessed using the reversed playback direction. Useful for doubling your sample count within the 64-slot limit
-- **Auto pitch detection** — detects the fundamental frequency of each sample and displays the musical note (e.g. C3, A#4); detected notes are included in exported filenames and metadata. Enabled via Settings as an experimental feature.
-- **Manual note override** — click any detected note (or the dash placeholder) to open a dropdown and choose a different note or set it to "None"
-- **Global settings** — gear button in the header opens a settings dialog; settings are persisted across sessions
-- **Hidden pitch debug mode** — press Cmd/Ctrl + Alt + D (Shift optional) to toggle per-slot pitch diagnostics (confidence, ZCR, and rejection reason)
-- **Original file preservation** — optionally include source files in the exported archive
-- **Normalize on export** — automatically maximizes sample volume without clipping (enabled by default)
-- **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info
-- **Zero backend** — everything runs client-side, no data ever leaves your browser
-- **Single-file that works offline** — App is only one self-contained HTML file, fully usable offline
-- **Session persistence** — your current bank, samples, and export options are automatically saved to IndexedDB and restored when you reopen the page
-- **Virtual keyboard** — toggle a 2-octave piano keyboard (press **P** or click the keyboard icon) to audition selected samples at different pitches with full rendering (loop, crossfade, LOFI); use arrow keys to navigate samples and shift octaves, plus QWERTY shortcuts for quick playing
+- **64-slot sample bank** — drag-and-drop grid with instant audio preview, auto-conversion to Syntakt format (16-bit, 48 kHz, mono), and ZIP import/export with metadata
+- **Loop editing with crossfade** — interactive waveform overlay with zero-crossing snap, adjustable crossfade for click-free seamless loops
+- **LOFI / XLOFI mode** — extends max sample time to 10s or 20s by exporting pitched up, with bandwidth-accurate preview
+- **Dual sample mode** — pack two samples into one slot (A+B); doubles your sample count within the 64-slot limit
+- **Pitch detection** — auto-detects fundamental frequency and displays the musical note
+- **Virtual keyboard** — 2-octave chromatic keyboard to audition samples at different pitches
+- **Fully offline & private** — single self-contained HTML file, zero backend, session auto-saved in browser
 
 ## Getting Started
 
