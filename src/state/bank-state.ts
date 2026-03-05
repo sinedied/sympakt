@@ -1,6 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import { Sample, MAX_SLOTS, getEffectiveMaxDuration } from '../types/index.js';
-import type { LoopSettings, LofiMode } from '../types/index.js';
+import { Sample, MAX_SLOTS, getEffectiveMaxDuration, getSplitMaxDuration } from '../types/index.js';
+import type { LoopSettings, LofiMode, SplitSample } from '../types/index.js';
 import { saveBank, loadBank, clearAll as clearPersistedData } from '../services/persistence.js';
 
 type BankListener = () => void;
@@ -67,7 +67,9 @@ class BankStateStore {
     const sample = this.slots[index];
     if (!sample) return;
 
-    const effectiveMax = getEffectiveMaxDuration(lofi);
+    const effectiveMax = sample.splitEnabled
+      ? getSplitMaxDuration(lofi)
+      : getEffectiveMaxDuration(lofi);
     const isTruncated = sample.duration > effectiveMax;
 
     // When reducing effective max (e.g. xlofi→lofi, lofi→off), clamp loop duration if needed
@@ -84,7 +86,27 @@ class BankStateStore {
       }
     }
 
-    this.slots[index] = { ...sample, lofi, isTruncated, loop };
+    // Also clamp B sample loop if in split mode
+    let splitSample = sample.splitSample;
+    if (sample.splitEnabled && splitSample) {
+      const splitMax = getSplitMaxDuration(lofi);
+      const bTruncated = splitSample.duration > splitMax;
+      let bLoop = splitSample.loop;
+      if (bLoop) {
+        const bLoopLen = bLoop.endTime - bLoop.startTime;
+        if (bLoopLen > splitMax) {
+          const newEnd = Math.min(bLoop.startTime + splitMax, splitSample.audioBuffer.duration);
+          bLoop = {
+            ...bLoop,
+            endTime: newEnd,
+            crossfadeDuration: Math.min(bLoop.crossfadeDuration, newEnd - bLoop.startTime, bLoop.startTime),
+          };
+        }
+      }
+      splitSample = { ...splitSample, isTruncated: bTruncated, loop: bLoop };
+    }
+
+    this.slots[index] = { ...sample, lofi, isTruncated, loop, splitSample };
     this.notify();
   }
 
@@ -93,6 +115,81 @@ class BankStateStore {
     const sample = this.slots[index];
     if (!sample) return;
     this.slots[index] = { ...sample, detectedNote: note };
+    this.notify();
+  }
+
+  /** Toggle dual split mode for a slot */
+  toggleSplitMode(index: number): void {
+    const sample = this.slots[index];
+    if (!sample) return;
+    const splitEnabled = !sample.splitEnabled;
+    const splitMaxDur = getSplitMaxDuration(sample.lofi);
+
+    // Recalculate A sample truncation based on split max
+    const isTruncated = splitEnabled
+      ? sample.duration > splitMaxDur
+      : sample.duration > getEffectiveMaxDuration(sample.lofi);
+
+    // Clamp A loop if needed
+    let loop = sample.loop;
+    if (splitEnabled && loop) {
+      const loopLen = loop.endTime - loop.startTime;
+      if (loopLen > splitMaxDur) {
+        const newEnd = Math.min(loop.startTime + splitMaxDur, sample.audioBuffer.duration);
+        loop = {
+          ...loop,
+          endTime: newEnd,
+          crossfadeDuration: Math.min(loop.crossfadeDuration, newEnd - loop.startTime, loop.startTime),
+        };
+      }
+    }
+
+    this.slots[index] = {
+      ...sample,
+      splitEnabled,
+      isTruncated,
+      loop,
+      // Discard B sample when disabling split
+      splitSample: splitEnabled ? (sample.splitSample ?? null) : undefined,
+    };
+    this.notify();
+  }
+
+  /** Set the B-side sample in a dual split slot */
+  setSplitSample(index: number, splitSample: SplitSample | null): void {
+    const sample = this.slots[index];
+    if (!sample || !sample.splitEnabled) return;
+    this.slots[index] = { ...sample, splitSample };
+    this.notify();
+  }
+
+  /** Update loop settings for the B-side sample */
+  updateSplitSampleLoop(index: number, loop: LoopSettings | null): void {
+    const sample = this.slots[index];
+    if (!sample?.splitSample) return;
+    this.slots[index] = {
+      ...sample,
+      splitSample: { ...sample.splitSample, loop },
+    };
+    this.notify();
+  }
+
+  /** Remove the B-side sample from a dual split slot */
+  removeSplitSample(index: number): void {
+    const sample = this.slots[index];
+    if (!sample) return;
+    this.slots[index] = { ...sample, splitSample: null };
+    this.notify();
+  }
+
+  /** Update the detected note for the B-side sample */
+  updateSplitSampleNote(index: number, note: string | null): void {
+    const sample = this.slots[index];
+    if (!sample?.splitSample) return;
+    this.slots[index] = {
+      ...sample,
+      splitSample: { ...sample.splitSample, detectedNote: note },
+    };
     this.notify();
   }
 

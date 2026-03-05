@@ -55,6 +55,13 @@ export const iconKeyboard = icon(svg`
   <rect x="13" y="5" width="3" height="8" fill="currentColor" stroke="none" />
 `);
 
+/** Dual split icon (vertical divider) */
+export const iconSplit = icon(svg`
+  <line x1="12" y1="3" x2="12" y2="21" stroke-width="2" />
+  <polyline points="8,7 4,12 8,17" fill="none" />
+  <polyline points="16,7 20,12 16,17" fill="none" />
+`);
+
 /** Heart (filled, pixel art) */
 export const iconHeart = svg`
   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 9 9"

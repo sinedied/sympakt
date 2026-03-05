@@ -60,12 +60,14 @@ export class WaveformView extends LitElement {
   @property({ type: Object }) loop: LoopSettings | null = null;
   @property({ type: Object }) audioBuffer: AudioBuffer | null = null;
   @property({ type: String }) lofi: LofiMode = 'off';
+  @property({ type: Number }) effectiveMaxOverride: number | null = null;
 
   @state() private dragTarget: DragTarget = null;
   private dragStartX = 0;
   private dragStartLoop: LoopSettings | null = null;
 
   private get effectiveMaxDuration(): number {
+    if (this.effectiveMaxOverride !== null) return this.effectiveMaxOverride;
     return getEffectiveMaxDuration(this.lofi);
   }
 

@@ -27,6 +27,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
 - **5-second truncation** — samples exceeding max duration are truncated with visual warning
 - **LOFI / XLOFI mode** — extends max sample time to 10s (LOFI, 2× speed) or 20s (XLOFI, 4× speed) by exporting pitched up; preview simulates the bandwidth reduction with a lowpass filter
+- **Dual sample mode** — pack two samples into one slot (A and B); on the Syntakt, sample A plays normally and sample B is accessed using the reversed playback direction. Useful for doubling your sample count within the 64-slot limit
 - **Auto pitch detection** — detects the fundamental frequency of each sample and displays the musical note (e.g. C3, A#4); detected notes are included in exported filenames and metadata. Enabled via Settings as an experimental feature.
 - **Manual note override** — click any detected note (or the dash placeholder) to open a dropdown and choose a different note or set it to "None"
 - **Global settings** — gear button in the header opens a settings dialog; settings are persisted across sessions
@@ -73,9 +74,13 @@ The build outputs a single `index.html` in `dist/` with all JS, CSS, fonts, and 
 4. **Loop** — click the loop button to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
 5. **LOFI / XLOFI** — click **LO** to cycle through LOFI modes: off → LOFI (10s max, 2× speed) → XLOFI (20s max, 4× speed). On the Syntakt, pitch the sample down one octave (LOFI) or two octaves (XLOFI) to hear the original sound.
 6. **Remove** — click the × button to clear a slot (requires confirmation)
-7. **Import a pack** — click **Import .zip** to load a previously exported sample pack
-8. **Export** — click **Export .zip**, set a pack name, toggle normalization, and optionally include original files
-9. **Virtual keyboard** — press **P** or click the keyboard icon to show a 2-octave piano; click a sample slot to select it, then play it chromatically using the on-screen keys or QWERTY shortcuts (A–J for white keys, W/E/T/Y/U for sharps). Use **←/→** to shift the octave range and **↑/↓** to switch between samples
+7. **Dual sample mode** — right-click (or click) a sample name and choose **ENABLE DUAL SAMPLE** to split the slot into A and B halves. Drop or click to import a sample into each half. Each side has its own waveform, loop points, and playback controls. LOFI and delete affect the whole slot. To revert to single mode, click either sample name and choose **DISABLE DUAL SAMPLE**.
+
+   **On the Syntakt**: sample A is accessible at the regular slot position (1–64). To play sample B, set the playback direction to **reverse** — B is stored reversed at the end of the WAV, so reversing it plays the original sound. Use a short **decay** or **sample length** to isolate the half you want to hear, since both samples share the same WAV file.
+
+8. **Import a pack** — click **Import .zip** to load a previously exported sample pack
+9. **Export** — click **Export .zip**, set a pack name, toggle normalization, and optionally include original files
+10. **Virtual keyboard** — press **P** or click the keyboard icon to show a 2-octave piano; click a sample slot to select it, then play it chromatically using the on-screen keys or QWERTY shortcuts (A–J for white keys, W/E/T/Y/U for sharps). Use **←/→** to shift the octave range and **↑/↓** to switch between samples
 
 ### Import from ZIP
 
@@ -91,8 +96,9 @@ Exported `.zip` files contain:
 | Path | Description |
 |------|-------------|
 | `01_kick_C3.wav` … `64_pad.wav` | 16-bit, 48 kHz, mono WAV files (note appended to name if detected) |
+| `01_kick-snare_DUAL.wav` | Dual sample slot: A in first half, B reversed in second half |
 | `sympakt.json` | Pack name, slot mappings, durations, loop settings, original filenames, , if "Include originals" is checked |
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 
 > [!NOTE]
-> Non-looped samples longer than 5 seconds are automatically truncated on export (10 seconds in LOFI mode, 20 seconds in XLOFI mode). Looped samples export only the selected loop region with crossfade applied. LOFI samples are exported at 2× speed (pitch down one octave on Syntakt), XLOFI at 4× speed (pitch down two octaves). Samples are normalized to peak volume by default.
+> Non-looped samples longer than 5 seconds are automatically truncated on export (10 seconds in LOFI mode, 20 seconds in XLOFI mode). Looped samples export only the selected loop region with crossfade applied. LOFI samples are exported at 2× speed (pitch down one octave on Syntakt), XLOFI at 4× speed (pitch down two octaves). Dual sample slots are exported as a single WAV with A in the first half and B reversed in the second half, separated by 20ms of silence — each side can be up to 2.49s (normal), 4.99s (LOFI), or 9.99s (XLOFI). Samples are normalized to peak volume by default.

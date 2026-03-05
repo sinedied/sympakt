@@ -2,8 +2,8 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
-import { processAudioFile } from '../services/zip-service.js';
-import { MAX_SLOTS } from '../types/index.js';
+import { processAudioFile, processSplitAudioFile } from '../services/zip-service.js';
+import { MAX_SLOTS, getSplitMaxDuration } from '../types/index.js';
 import type { LoopSettings, LofiMode } from '../types/index.js';
 import './sample-slot.js';
 
@@ -79,6 +79,10 @@ export class SampleBank extends LitElement {
               @lofi-toggle=${this.onLofiToggle}
               @note-change=${this.onNoteChange}
               @slot-select=${this.onSlotSelect}
+              @split-toggle=${this.onSplitToggle}
+              @split-sample-import=${this.onSplitSampleImport}
+              @split-sample-remove=${this.onSplitSampleRemove}
+              @split-loop-update=${this.onSplitLoopUpdate}
             ></sp-sample-slot>
           `,
         )}
@@ -89,7 +93,18 @@ export class SampleBank extends LitElement {
   private async onSampleImport(e: CustomEvent<{ index: number; file: File }>): Promise<void> {
     const { index, file } = e.detail;
     try {
+      const existing = bankState.getSlot(index);
       const sample = await processAudioFile(file, this.pitchDetectionEnabled);
+
+      // Preserve split mode and B sample when re-importing A side
+      if (existing?.splitEnabled) {
+        const splitMax = getSplitMaxDuration(existing.lofi);
+        sample.splitEnabled = true;
+        sample.splitSample = existing.splitSample;
+        sample.lofi = existing.lofi;
+        sample.isTruncated = sample.duration > splitMax;
+      }
+
       bankState.setSample(index, sample);
     } catch (err) {
       console.error('Failed to import sample:', err);
@@ -133,6 +148,30 @@ export class SampleBank extends LitElement {
 
   private onSlotSelect(e: CustomEvent<{ index: number }>): void {
     bankState.selectSlot(e.detail.index);
+  }
+
+  private onSplitToggle(e: CustomEvent<{ index: number }>): void {
+    bankState.toggleSplitMode(e.detail.index);
+  }
+
+  private async onSplitSampleImport(e: CustomEvent<{ index: number; file: File }>): Promise<void> {
+    const { index, file } = e.detail;
+    const sample = bankState.getSlot(index);
+    if (!sample) return;
+    try {
+      const splitSample = await processSplitAudioFile(file, sample.lofi, this.pitchDetectionEnabled);
+      bankState.setSplitSample(index, splitSample);
+    } catch (err) {
+      console.error('Failed to import split B sample:', err);
+    }
+  }
+
+  private onSplitSampleRemove(e: CustomEvent<{ index: number }>): void {
+    bankState.removeSplitSample(e.detail.index);
+  }
+
+  private onSplitLoopUpdate(e: CustomEvent<{ index: number; loop: LoopSettings | null }>): void {
+    bankState.updateSplitSampleLoop(e.detail.index, e.detail.loop);
   }
 }
 

@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration, ALL_NOTES } from '../types/index.js';
+import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration, getSplitMaxDuration, ALL_NOTES } from '../types/index.js';
 import type { LoopSettings, LofiMode } from '../types/index.js';
 import { playSample, playSampleLooped } from '../services/audio-engine.js';
 import { iconPlay, iconStop, iconLoop, iconCheck, iconClose, iconPlus } from '../icons.js';
@@ -274,6 +274,100 @@ export class SampleSlot extends LitElement {
       input[type='file'] {
         display: none;
       }
+
+      /* Dual split mode styles */
+      .split-container {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .split-half {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .split-half + .split-half {
+        border-left: 1px dashed var(--accent-dim);
+        padding-left: 4px;
+        margin-left: 4px;
+      }
+
+      .split-half.drag-over {
+        background: var(--accent-glow);
+        border-radius: 2px;
+      }
+
+      .split-label {
+        font-family: var(--font-pixel);
+        font-size: 6px;
+        color: var(--accent-dim);
+        letter-spacing: 1px;
+        flex-shrink: 0;
+      }
+
+      .split-half .waveform-container {
+        flex: 1;
+        height: 22px;
+        position: relative;
+        overflow: visible;
+      }
+
+      .split-half .split-actions {
+        display: flex;
+        gap: 2px;
+        align-items: center;
+      }
+
+      .split-half .split-actions button {
+        padding: 2px 4px;
+        font-size: 7px;
+        min-width: 0;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .split-half .sample-name {
+        max-width: 80px;
+      }
+
+      .shared-actions {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .shared-actions button {
+        padding: 4px 6px;
+        font-size: 7px;
+        min-width: 0;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn-split {
+        font-size: 7px;
+        padding: 4px 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn-split.active {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+        color: #000;
+      }
     `,
   ];
 
@@ -283,16 +377,23 @@ export class SampleSlot extends LitElement {
   @property({ type: Boolean }) selected = false;
 
   @state() private dragOver = false;
+  @state() private dragOverA = false;
+  @state() private dragOverB = false;
   @state() private dragging = false;
   @state() private playing = false;
+  @state() private playingB = false;
   @state() private confirmingRemove = false;
   @state() private sampleMenuOpen = false;
+  @state() private splitMenuOpen = false;
+  @state() private splitMenuOpenB = false;
   @state() private pitchSubmenuOpen = false;
   private stopFn?: () => void;
+  private stopFnB?: () => void;
   private outsideClickHandler = this.onOutsideClick.bind(this);
   private stopAllHandler = this.onStopAll.bind(this);
 
   private fileInput?: HTMLInputElement;
+  private fileInputB?: HTMLInputElement;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -309,25 +410,42 @@ export class SampleSlot extends LitElement {
     if (this.playing) {
       this.stopPlayback();
     }
+    if (this.playingB) {
+      this.stopPlaybackB();
+    }
   }
 
   override render() {
     const slotNum = String(this.index + 1).padStart(2, '0');
     const cls = `slot${this.dragOver ? ' drag-over' : ''}${this.dragging ? ' dragging' : ''}${this.selected ? ' selected' : ''}`;
 
+    const isSplit = this.sample?.splitEnabled ?? false;
+
     return html`
       <div
         class=${cls}
-        draggable=${this.sample ? 'true' : 'false'}
-        @dragstart=${this.onDragStart}
-        @dragend=${this.onDragEnd}
-        @dragover=${this.onDragOver}
-        @dragleave=${this.onDragLeave}
-        @drop=${this.onDrop}
+        draggable=${this.sample && !isSplit ? 'true' : 'false'}
+        @dragstart=${isSplit ? undefined : this.onDragStart}
+        @dragend=${isSplit ? undefined : this.onDragEnd}
+        @dragover=${isSplit ? undefined : this.onDragOver}
+        @dragleave=${isSplit ? undefined : this.onDragLeave}
+        @drop=${isSplit ? undefined : this.onDrop}
         @click=${this.onSlotClick}
       >
         <span class="slot-number">${slotNum}</span>
 
+        ${isSplit
+          ? this.renderSplitMode()
+          : this.renderNormalMode()}
+
+        <input type="file" accept="audio/*" @change=${this.onFileSelected} />
+        <input type="file" accept="audio/*" id="file-input-b" @change=${this.onFileSelectedB} />
+      </div>
+    `;
+  }
+
+  private renderNormalMode() {
+    return html`
         <div class="waveform-container">
           ${this.sample
             ? html`
@@ -395,8 +513,117 @@ export class SampleSlot extends LitElement {
                 <button @click=${this.onClickImport} title="Add a sample to this slot">${iconPlus}</button>
               </div>
             `}
+    `;
+  }
 
-        <input type="file" accept="audio/*" @change=${this.onFileSelected} />
+  private renderSplitMode() {
+    if (!this.sample) return nothing;
+    const splitB = this.sample.splitSample;
+    const splitMax = this.splitMaxDuration;
+
+    return html`
+      <div class="split-container">
+        <!-- A side -->
+        <div class="split-half ${this.dragOverA ? 'drag-over' : ''}"
+          @dragover=${this.onDragOverA}
+          @dragleave=${this.onDragLeaveA}
+          @drop=${this.onDropA}
+        >
+          <span class="split-label">A</span>
+          <div class="waveform-container">
+            <sp-waveform
+              .data=${this.sample.waveformData}
+              .duration=${this.sample.duration}
+              .truncated=${this.sample.isTruncated}
+              .loopEnabled=${this.sample.loop !== null}
+              .loop=${this.sample.loop}
+              .audioBuffer=${this.sample.audioBuffer}
+              .lofi=${this.sample.lofi}
+              .effectiveMaxOverride=${splitMax}
+              @loop-change=${this.onLoopChange}
+            ></sp-waveform>
+          </div>
+          <span class="sample-name-wrap" @click=${this.toggleSplitMenu}>
+            <span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>
+            ${this.splitMenuOpen ? this.renderSplitMenu() : nothing}
+          </span>
+          <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}">
+            ${this.sample.loop
+              ? formatDuration(this.sample.loop.endTime - this.sample.loop.startTime)
+              : formatDuration(Math.min(this.sample.duration, splitMax))}
+          </span>
+          <div class="split-actions">
+            <button class="btn-play" @click=${this.togglePlay} title="${this.playing ? 'Stop A' : 'Play A'}">
+              ${this.playing ? iconStop : iconPlay}
+            </button>
+            <button
+              class="btn-loop ${this.sample.loop !== null ? 'active' : ''}"
+              @click=${this.toggleLoop}
+              title="${this.sample.loop !== null ? 'Disable loop A' : 'Enable loop A'}"
+            >${iconLoop}</button>
+          </div>
+        </div>
+
+        <!-- B side -->
+        <div class="split-half ${this.dragOverB ? 'drag-over' : ''}"
+          @dragover=${this.onDragOverB}
+          @dragleave=${this.onDragLeaveB}
+          @drop=${this.onDropB}
+        >
+          <span class="split-label">B</span>
+          ${splitB
+            ? html`
+                <div class="waveform-container">
+                  <sp-waveform
+                    .data=${splitB.waveformData}
+                    .duration=${splitB.duration}
+                    .truncated=${splitB.isTruncated}
+                    .loopEnabled=${splitB.loop !== null}
+                    .loop=${splitB.loop}
+                    .audioBuffer=${splitB.audioBuffer}
+                    .lofi=${this.sample.lofi}
+                    .effectiveMaxOverride=${splitMax}
+                    @loop-change=${this.onLoopChangeB}
+                  ></sp-waveform>
+                </div>
+                <span class="sample-name-wrap" @click=${this.toggleSplitMenuB}>
+                  <span class="sample-name" title=${splitB.name}>${splitB.name}</span>
+                  ${this.splitMenuOpenB ? this.renderSplitMenu() : nothing}
+                </span>
+                <span class="duration ${splitB.isTruncated && !splitB.loop ? 'truncated' : ''}">
+                  ${splitB.loop
+                    ? formatDuration(splitB.loop.endTime - splitB.loop.startTime)
+                    : formatDuration(Math.min(splitB.duration, splitMax))}
+                </span>
+                <div class="split-actions">
+                  <button class="btn-play" @click=${this.togglePlayB} title="${this.playingB ? 'Stop B' : 'Play B'}">
+                    ${this.playingB ? iconStop : iconPlay}
+                  </button>
+                  <button
+                    class="btn-loop ${splitB.loop !== null ? 'active' : ''}"
+                    @click=${this.toggleLoopB}
+                    title="${splitB.loop !== null ? 'Disable loop B' : 'Enable loop B'}"
+                  >${iconLoop}</button>
+                </div>
+              `
+            : html`
+                <div class="waveform-container">
+                  <div class="empty-slot" @click=${this.onClickImportB} title="Drop or click to add B sample">Drop or click</div>
+                </div>
+              `}
+        </div>
+      </div>
+
+      <!-- Shared actions (LOFI, remove) -->
+      <div class="shared-actions">
+        <button
+          class="btn-lofi ${this.lofiButtonClass}"
+          @click=${this.toggleLofi}
+          title="${this.lofiButtonTitle}"
+        >${this.lofiButtonLabel}</button>
+        ${this.confirmingRemove
+          ? html`<button class="danger confirm" @click=${this.onConfirmRemove} title="Click to confirm removal">${iconCheck}</button>`
+          : html`<button class="danger" @click=${this.onRemoveClick} title="Remove slot">${iconClose}</button>`}
       </div>
     `;
   }
@@ -460,6 +687,8 @@ export class SampleSlot extends LitElement {
   private onOutsideClick(): void {
     this.confirmingRemove = false;
     this.sampleMenuOpen = false;
+    this.splitMenuOpen = false;
+    this.splitMenuOpenB = false;
     this.pitchSubmenuOpen = false;
   }
 
@@ -484,9 +713,48 @@ export class SampleSlot extends LitElement {
           @mouseenter=${() => { this.pitchSubmenuOpen = true; }}
           @mouseleave=${() => { this.pitchSubmenuOpen = false; }}
         >
-          Set pitch <svg width="6" height="8" viewBox="0 0 6 8" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,1 5,4 1,7"/></svg>
+          SET PITCH <svg width="6" height="8" viewBox="0 0 6 8" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,1 5,4 1,7"/></svg>
           ${this.pitchSubmenuOpen ? this.renderPitchSubmenu() : nothing}
         </div>
+        <button class="menu-item" @click=${this.onToggleSplit}>
+          ENABLE DUAL SAMPLE
+        </button>
+      </div>
+    `;
+  }
+
+  private toggleSplitMenu(e: Event): void {
+    e.stopPropagation();
+    this.splitMenuOpen = !this.splitMenuOpen;
+    this.splitMenuOpenB = false;
+    if (this.splitMenuOpen) {
+      requestAnimationFrame(() => {
+        document.addEventListener('click', () => {
+          this.splitMenuOpen = false;
+        }, { once: true });
+      });
+    }
+  }
+
+  private toggleSplitMenuB(e: Event): void {
+    e.stopPropagation();
+    this.splitMenuOpenB = !this.splitMenuOpenB;
+    this.splitMenuOpen = false;
+    if (this.splitMenuOpenB) {
+      requestAnimationFrame(() => {
+        document.addEventListener('click', () => {
+          this.splitMenuOpenB = false;
+        }, { once: true });
+      });
+    }
+  }
+
+  private renderSplitMenu() {
+    return html`
+      <div class="sample-menu" @click=${(e: Event) => e.stopPropagation()}>
+        <button class="menu-item" @click=${this.onToggleSplit}>
+          DISABLE DUAL SAMPLE
+        </button>
       </div>
     `;
   }
@@ -516,9 +784,18 @@ export class SampleSlot extends LitElement {
   }
 
   private get effectiveMaxDuration(): number {
+    if (this.sample?.splitEnabled) {
+      return getSplitMaxDuration(this.sample.lofi);
+    }
     return this.sample
       ? getEffectiveMaxDuration(this.sample.lofi)
       : MAX_SAMPLE_DURATION;
+  }
+
+  private get splitMaxDuration(): number {
+    return this.sample
+      ? getSplitMaxDuration(this.sample.lofi)
+      : MAX_SAMPLE_DURATION / 2;
   }
 
   private get lofiButtonClass(): string {
@@ -598,6 +875,41 @@ export class SampleSlot extends LitElement {
     );
   }
 
+  private toggleLoopB(): void {
+    if (!this.sample?.splitSample) return;
+    const splitMax = this.splitMaxDuration;
+    const b = this.sample.splitSample;
+    const audioDuration = b.audioBuffer.duration;
+    const loopEnd = Math.min(audioDuration, splitMax);
+    const loopStart = loopEnd * 0.1;
+    const loopDuration = loopEnd - loopStart;
+    const newLoop: LoopSettings | null = b.loop
+      ? null
+      : {
+          startTime: loopStart,
+          endTime: loopEnd,
+          crossfadeDuration: loopDuration * 0.1,
+        };
+
+    this.dispatchEvent(
+      new CustomEvent('split-loop-update', {
+        detail: { index: this.index, loop: newLoop },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onLoopChangeB(e: CustomEvent<LoopSettings>): void {
+    this.dispatchEvent(
+      new CustomEvent('split-loop-update', {
+        detail: { index: this.index, loop: e.detail },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   private onLoopChange(e: CustomEvent<LoopSettings>): void {
     this.dispatchEvent(
       new CustomEvent('loop-update', {
@@ -657,6 +969,150 @@ export class SampleSlot extends LitElement {
     this.stopFn?.();
     this.stopFn = undefined;
     this.playing = false;
+  }
+
+  private togglePlayB(): void {
+    if (this.playingB) {
+      this.stopPlaybackB();
+    } else {
+      this.startPlaybackB();
+    }
+  }
+
+  private startPlaybackB(): void {
+    if (!this.sample?.splitSample) return;
+
+    // Stop any other playing sample
+    window.dispatchEvent(new Event('stop-all-playback'));
+
+    this.playingB = true;
+    const lofi = this.sample.lofi;
+    const b = this.sample.splitSample;
+
+    if (b.loop) {
+      playSampleLooped(b.audioBuffer, b.loop, lofi).then((stop) => {
+        this.stopFnB = stop;
+      });
+    } else {
+      this.stopFnB = playSample(b.audioBuffer, 0, lofi);
+      const dur = Math.min(b.duration, this.splitMaxDuration);
+      setTimeout(() => this.stopPlaybackB(), dur * 1000);
+    }
+  }
+
+  private stopPlaybackB(): void {
+    this.stopFnB?.();
+    this.stopFnB = undefined;
+    this.playingB = false;
+  }
+
+  private onToggleSplit(): void {
+    this.sampleMenuOpen = false;
+    this.pitchSubmenuOpen = false;
+    this.dispatchEvent(
+      new CustomEvent('split-toggle', {
+        detail: { index: this.index },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onClickImportB(): void {
+    if (!this.fileInputB) {
+      this.fileInputB = this.shadowRoot!.querySelector('#file-input-b') as HTMLInputElement;
+    }
+    this.fileInputB?.click();
+  }
+
+  private onFileSelectedB(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.dispatchEvent(
+        new CustomEvent('split-sample-import', {
+          detail: { index: this.index, file },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
+    input.value = '';
+  }
+
+  // --- Split-mode Drag & Drop (per-half) ---
+
+  private onDragOverA(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only accept file drops, not reorder drags
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy';
+      this.dragOverA = true;
+    }
+  }
+
+  private onDragLeaveA(e: DragEvent): void {
+    e.stopPropagation();
+    this.dragOverA = false;
+  }
+
+  private onDropA(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.dragOverA = false;
+
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const audioFile = Array.from(files).find(
+        (f) => f.type.startsWith('audio/') || f.name.match(/\.(wav|mp3|ogg|flac|aiff|m4a)$/i),
+      );
+      if (audioFile) {
+        this.dispatchEvent(
+          new CustomEvent('sample-import', {
+            detail: { index: this.index, file: audioFile },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+    }
+  }
+
+  private onDragOverB(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy';
+      this.dragOverB = true;
+    }
+  }
+
+  private onDragLeaveB(e: DragEvent): void {
+    e.stopPropagation();
+    this.dragOverB = false;
+  }
+
+  private onDropB(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.dragOverB = false;
+
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const audioFile = Array.from(files).find(
+        (f) => f.type.startsWith('audio/') || f.name.match(/\.(wav|mp3|ogg|flac|aiff|m4a)$/i),
+      );
+      if (audioFile) {
+        this.dispatchEvent(
+          new CustomEvent('split-sample-import', {
+            detail: { index: this.index, file: audioFile },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+    }
   }
 
   // --- Drag & Drop ---

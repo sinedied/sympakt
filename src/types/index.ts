@@ -39,6 +39,34 @@ export interface Sample {
   detectedNote: string | null;
   /** Optional debug info from pitch detection analysis */
   pitchDebug?: PitchDebugInfo;
+  /** Whether dual split mode is enabled for this slot */
+  splitEnabled?: boolean;
+  /** B-side sample data in dual split mode (null/undefined = no B sample) */
+  splitSample?: SplitSample | null;
+}
+
+/** B-side sample in dual split mode */
+export interface SplitSample {
+  /** Display name (without extension) */
+  name: string;
+  /** Original file name as imported */
+  originalFileName: string;
+  /** Decoded audio buffer */
+  audioBuffer: AudioBuffer;
+  /** Waveform RMS data for rendering (0-1 per column) */
+  waveformData: number[];
+  /** Duration in seconds */
+  duration: number;
+  /** Whether the B sample exceeds the split max duration */
+  isTruncated: boolean;
+  /** The original file bytes */
+  originalFile: Uint8Array;
+  /** Loop settings (null = no loop) */
+  loop: LoopSettings | null;
+  /** Auto-detected musical note */
+  detectedNote: string | null;
+  /** Optional debug info from pitch detection analysis */
+  pitchDebug?: PitchDebugInfo;
 }
 
 /** Loop point and crossfade settings for seamless looping */
@@ -74,6 +102,18 @@ export interface SlotMetadata {
   lofi?: LofiMode | boolean;
   /** Auto-detected musical note (omitted if no clear pitch) */
   detectedNote?: string;
+  /** Dual split mode enabled */
+  splitEnabled?: boolean;
+  /** B-side sample metadata in dual split */
+  splitSample?: {
+    name: string;
+    originalFileName: string;
+    originalFilePath?: string;
+    duration: number;
+    isTruncated: boolean;
+    loop?: LoopSettings;
+    detectedNote?: string;
+  };
 }
 
 /** Export options presented to the user */
@@ -103,6 +143,7 @@ export const WAVEFORM_COLUMNS = 200; // number of columns in waveform display
 export const METADATA_FILENAME = 'sympakt.json';
 export const LOFI_SPEED_FACTOR = 2; // playback speed multiplier for LOFI mode
 export const XLOFI_SPEED_FACTOR = 4; // playback speed multiplier for XLOFI mode
+export const DUAL_SPLIT_SILENCE = 0.020; // 20ms minimum silence between A and B in dual split
 
 /** Get the speed factor for a given LOFI mode */
 export function getLofiSpeedFactor(mode: LofiMode): number {
@@ -121,6 +162,11 @@ export function getEffectiveMaxDuration(mode: LofiMode): number {
 /** Whether any LOFI mode is active */
 export function isLofiActive(mode: LofiMode): boolean {
   return mode !== 'off';
+}
+
+/** Get the max duration for each side of a dual split */
+export function getSplitMaxDuration(mode: LofiMode): number {
+  return (getEffectiveMaxDuration(mode) - DUAL_SPLIT_SILENCE) / 2;
 }
 
 /** Normalize legacy boolean lofi values to LofiMode */

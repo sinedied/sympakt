@@ -61,7 +61,7 @@ src/
 - **Max sample length**: looped samples export only the loop region; non-looped samples are truncated to 5 seconds (10 seconds in LOFI mode)
 - **Max loop duration**: 5 seconds (10 seconds in LOFI mode)
 - **Bank size**: exactly 64 slots
-- **File naming on export**: `<slot_number>_<sample_name>[_<detected_note>].wav` (e.g., `01_kick.wav`, `10_Kick_C3.wav`)
+- **File naming on export**: `<slot_number>_<sample_name>[_<detected_note>].wav` (e.g., `01_kick.wav`, `10_Kick_C3.wav`). Dual split slots use: `<slot_number>_<name_A>-<name_B>_DUAL.wav`
 - **Metadata**: JSON file included in exported ZIP with original filenames, sample options, loop settings, detected notes, and structure
 - **Audio buffer preservation**: full audio duration is kept in memory (no truncation at import); truncation/extraction happens only at export time
 
@@ -151,11 +151,28 @@ npm run preview
 - **State**: `Sample.lofi: LofiMode`, cycled via `bankState.updateSampleLofi()`. Changing mode recalculates `isTruncated` and clamps loop duration when reducing the effective max.
 - **Metadata**: `lofi` field is saved/restored in `sympakt.json` for ZIP roundtrip. Legacy `true`/`false` values are auto-converted to `'lofi'`/`'off'`.
 
+## Dual Sample Split
+
+- **Purpose**: allows a single slot to hold two separate samples (A and B) that are exported merged into one WAV. On the Syntakt, the user can access each sample by setting the appropriate start point.
+- **Toggle**: enabled per-slot via the sample name context menu → "Dual split A|B". Disabled via the A-side name context menu → "Disable dual split". The setting persists in IndexedDB and metadata.
+- **Type**: `Sample.splitEnabled?: boolean`, `Sample.splitSample?: SplitSample | null`. `SplitSample` carries its own `audioBuffer`, `waveformData`, `loop`, `detectedNote`, etc.
+- **UI**: when enabled, the slot content is replaced by a split container with two halves (A and B), each showing its own waveform, play/loop buttons, name and duration. LOFI and remove buttons are shared and affect the whole slot. Each half has its own drop zone for importing audio files. The A-side name has a context menu with only a "Disable dual split" option (no pitch submenu in split mode). No separate remove button for B-side; the shared remove handles the entire slot.
+- **Max duration per side**: `getSplitMaxDuration(lofi)` = `(getEffectiveMaxDuration(lofi) - DUAL_SPLIT_SILENCE) / 2`. For normal mode: (5 − 0.02) / 2 = 2.49s per side.
+- **Silence gap**: `DUAL_SPLIT_SILENCE = 0.020` (20ms) minimum silence between A and B in the exported WAV.
+- **Export layout**: total WAV length = `MAX_SAMPLE_DURATION` (in export time domain). Layout: `[A pcm][silence padding][B reversed, aligned to end]`. B is reversed so that on the Syntakt, playing from the end of the sample gives the B sample forwards.
+- **Export function**: `exportDualSplitPCM(sample, speedFactor)` in `zip-service.ts` handles the merge.
+- **Waveform**: the `sp-waveform` component accepts an optional `effectiveMaxOverride` property so the truncation line uses the split max instead of the full slot max.
+- **State management**: `bankState.toggleSplitMode()`, `setSplitSample()`, `updateSplitSampleLoop()`, `removeSplitSample()`, `updateSplitSampleNote()`.
+- **Import**: `processSplitAudioFile(file, lofiMode, enablePitch)` in `zip-service.ts` creates a `SplitSample`.
+- **Persistence**: `StoredSplitSample` in `persistence.ts` serializes the B sample's AudioBuffer as Float32Arrays, same pattern as the main sample. Fully round-trips through IndexedDB and ZIP metadata.
+- **ZIP roundtrip**: `splitEnabled` and `splitSample` metadata fields are stored in `sympakt.json`. B-side original files are stored under `originals/split_b_<filename>`.
+- **LOFI interaction**: changing LOFI mode recalculates truncation and clamps loops for both A and B sides.
+
 ## Icons
 
 - All UI icons are inline SVGs defined in `src/icons.ts` using Lit `svg` tagged templates
 - Icons use `currentColor` for fill/stroke so they inherit the button's text color
-- Available icons: `iconPlay`, `iconStop`, `iconLoop`, `iconCheck`, `iconClose`, `iconPlus`, `iconHeart`, `iconGear`, `iconKeyboard`
+- Available icons: `iconPlay`, `iconStop`, `iconLoop`, `iconCheck`, `iconClose`, `iconPlus`, `iconHeart`, `iconGear`, `iconKeyboard`, `iconSplit`
 - The heart icon uses pixel-art rendering (`shape-rendering="crispEdges"`) to match the pixel font aesthetic
 - When adding new icons, follow the same pattern: export a `const` from `icons.ts`
 

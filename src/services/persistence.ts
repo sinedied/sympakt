@@ -1,4 +1,4 @@
-import type { Sample, LoopSettings, LofiMode } from '../types/index.js';
+import type { Sample, LoopSettings, LofiMode, SplitSample } from '../types/index.js';
 import { normalizeLofiMode } from '../types/index.js';
 import { generateWaveformData } from './audio-engine.js';
 
@@ -22,6 +22,23 @@ interface StoredSample {
   originalFile: Uint8Array;
   loop: LoopSettings | null;
   lofi: LofiMode | boolean;
+  detectedNote: string | null;
+  splitEnabled?: boolean;
+  splitSample?: StoredSplitSample | null;
+}
+
+/** Serializable representation of a SplitSample */
+interface StoredSplitSample {
+  name: string;
+  originalFileName: string;
+  channelData: Float32Array[];
+  sampleRate: number;
+  numberOfChannels: number;
+  bufferLength: number;
+  duration: number;
+  isTruncated: boolean;
+  originalFile: Uint8Array;
+  loop: LoopSettings | null;
   detectedNote: string | null;
 }
 
@@ -58,6 +75,29 @@ function serializeSample(sample: Sample): StoredSample {
   for (let c = 0; c < buf.numberOfChannels; c++) {
     channelData.push(new Float32Array(buf.getChannelData(c)));
   }
+
+  let storedSplit: StoredSplitSample | null = null;
+  if (sample.splitSample) {
+    const bBuf = sample.splitSample.audioBuffer;
+    const bChannelData: Float32Array[] = [];
+    for (let c = 0; c < bBuf.numberOfChannels; c++) {
+      bChannelData.push(new Float32Array(bBuf.getChannelData(c)));
+    }
+    storedSplit = {
+      name: sample.splitSample.name,
+      originalFileName: sample.splitSample.originalFileName,
+      channelData: bChannelData,
+      sampleRate: bBuf.sampleRate,
+      numberOfChannels: bBuf.numberOfChannels,
+      bufferLength: bBuf.length,
+      duration: sample.splitSample.duration,
+      isTruncated: sample.splitSample.isTruncated,
+      originalFile: sample.splitSample.originalFile,
+      loop: sample.splitSample.loop,
+      detectedNote: sample.splitSample.detectedNote,
+    };
+  }
+
   return {
     id: sample.id,
     name: sample.name,
@@ -72,6 +112,8 @@ function serializeSample(sample: Sample): StoredSample {
     loop: sample.loop,
     lofi: sample.lofi,
     detectedNote: sample.detectedNote,
+    splitEnabled: sample.splitEnabled,
+    splitSample: storedSplit,
   };
 }
 
@@ -84,6 +126,32 @@ function deserializeSample(stored: StoredSample): Sample {
   for (let c = 0; c < stored.numberOfChannels; c++) {
     audioBuffer.copyToChannel(new Float32Array(stored.channelData[c]), c);
   }
+
+  const lofiMode = normalizeLofiMode(stored.lofi);
+
+  let splitSample: SplitSample | null = null;
+  if (stored.splitSample) {
+    const bAudioBuffer = new AudioBuffer({
+      length: stored.splitSample.bufferLength,
+      numberOfChannels: stored.splitSample.numberOfChannels,
+      sampleRate: stored.splitSample.sampleRate,
+    });
+    for (let c = 0; c < stored.splitSample.numberOfChannels; c++) {
+      bAudioBuffer.copyToChannel(new Float32Array(stored.splitSample.channelData[c]), c);
+    }
+    splitSample = {
+      name: stored.splitSample.name,
+      originalFileName: stored.splitSample.originalFileName,
+      audioBuffer: bAudioBuffer,
+      waveformData: generateWaveformData(bAudioBuffer),
+      duration: stored.splitSample.duration,
+      isTruncated: stored.splitSample.isTruncated,
+      originalFile: stored.splitSample.originalFile,
+      loop: stored.splitSample.loop,
+      detectedNote: stored.splitSample.detectedNote ?? null,
+    };
+  }
+
   return {
     id: stored.id,
     name: stored.name,
@@ -94,8 +162,10 @@ function deserializeSample(stored: StoredSample): Sample {
     isTruncated: stored.isTruncated,
     originalFile: stored.originalFile,
     loop: stored.loop,
-    lofi: normalizeLofiMode(stored.lofi),
+    lofi: lofiMode,
     detectedNote: stored.detectedNote ?? null,
+    splitEnabled: stored.splitEnabled ?? false,
+    splitSample: splitSample ?? undefined,
   };
 }
 
