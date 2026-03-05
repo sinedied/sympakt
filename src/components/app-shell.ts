@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { iconHeart } from '../icons.js';
+import { iconHeart, iconGear } from '../icons.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import {
   exportSamplePack,
@@ -10,8 +10,10 @@ import {
 } from '../services/zip-service.js';
 import { loadSettings, saveSettings } from '../services/persistence.js';
 import type { ExportOptions } from '../types/index.js';
+import { detectPitchWithDebug } from '../services/audio-engine.js';
 import './sample-bank.js';
 import './export-dialog.js';
+import './settings-dialog.js';
 
 /**
  * Main application shell.
@@ -165,6 +167,13 @@ export class AppShell extends LitElement {
       input[type='file'] {
         display: none;
       }
+
+      .btn-settings {
+        padding: 4px 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
     `,
   ];
 
@@ -178,6 +187,8 @@ export class AppShell extends LitElement {
   @state() private exportPackName = 'My Sample Pack';
   @state() private headerDragOver = false;
   @state() private pitchDebugMode = false;
+  @state() private settingsDialogOpen = false;
+  @state() private pitchDetectionEnabled = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -203,6 +214,7 @@ export class AppShell extends LitElement {
       if (settings) {
         if (settings.packName !== undefined) this.exportPackName = settings.packName;
         if (settings.includeOriginals !== undefined) this.exportIncludeOriginals = settings.includeOriginals;
+        if (settings.pitchDetectionEnabled !== undefined) this.pitchDetectionEnabled = settings.pitchDetectionEnabled;
       }
       if (restored) {
         const count = this.bankCtrl.slots.filter((s) => s !== null).length;
@@ -229,6 +241,7 @@ export class AppShell extends LitElement {
         <div class="toolbar">
           <span class="slot-count" title="Filled slots out of 64">${filledSlots}/64</span>
           ${this.pitchDebugMode ? html`<span class="debug-badge" title="Pitch debug mode enabled">DBG</span>` : nothing}
+          <button class="btn-settings" @click=${this.onOpenSettings} title="Settings">${iconGear}</button>
           <button
             class=${this.headerDragOver ? 'import-highlight' : ''}
             @click=${this.onImportZip}
@@ -252,7 +265,7 @@ export class AppShell extends LitElement {
       </header>
 
       <main>
-        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode}></sp-sample-bank>
+        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled}></sp-sample-bank>
       </main>
 
       <footer>
@@ -271,6 +284,13 @@ export class AppShell extends LitElement {
         @dialog-close=${() => (this.exportDialogOpen = false)}
         @export-confirm=${this.onExportConfirm}
       ></sp-export-dialog>
+
+      <sp-settings-dialog
+        ?open=${this.settingsDialogOpen}
+        .pitchDetectionEnabled=${this.pitchDetectionEnabled}
+        @dialog-close=${() => (this.settingsDialogOpen = false)}
+        @pitch-detection-toggle=${this.onPitchDetectionToggle}
+      ></sp-settings-dialog>
 
       ${this.notification
         ? html`<div class="notification ${this.notification.error ? 'error' : ''}">
@@ -308,7 +328,7 @@ export class AppShell extends LitElement {
   private async importZipFile(file: File): Promise<void> {
     this.importing = true;
     try {
-      const result = await importSamplePack(file);
+      const result = await importSamplePack(file, this.pitchDetectionEnabled);
       bankState.loadBank(result.slots);
       this.exportIncludeOriginals = result.includeOriginals;
       this.exportPackName = result.packName;
@@ -385,6 +405,41 @@ export class AppShell extends LitElement {
     }
   }
 
+  private onOpenSettings(): void {
+    this.settingsDialogOpen = true;
+  }
+
+  private async onPitchDetectionToggle(e: CustomEvent<{ enabled: boolean }>): Promise<void> {
+    this.pitchDetectionEnabled = e.detail.enabled;
+    this.persistSettings();
+
+    if (e.detail.enabled) {
+      // Run pitch detection on all existing samples
+      const slots = this.bankCtrl.slots;
+      let detected = 0;
+      for (let i = 0; i < slots.length; i++) {
+        const sample = slots[i];
+        if (sample && sample.detectedNote === null) {
+          const result = detectPitchWithDebug(sample.audioBuffer);
+          bankState.updateSampleNote(i, result.note);
+          // Also store debug info
+          if (sample.pitchDebug === undefined) {
+            const updated = bankState.getSlot(i);
+            if (updated) {
+              bankState.setSample(i, { ...updated, pitchDebug: result.debug });
+            }
+          }
+          if (result.note) detected++;
+        }
+      }
+      this.showNotification(`Pitch detection enabled — ${detected} notes detected`);
+    } else {
+      // Clear all pitch data
+      bankState.clearAllPitchData();
+      this.showNotification('Pitch detection disabled — notes cleared');
+    }
+  }
+
   private onKeyDown(e: KeyboardEvent): void {
     // Secret combo: Cmd/Ctrl + Alt + D (Shift optional)
     // Use `code` for keyboard-layout safety on macOS.
@@ -398,10 +453,15 @@ export class AppShell extends LitElement {
   }
 
   private persistExportOptions(): void {
+    this.persistSettings();
+  }
+
+  private persistSettings(): void {
     saveSettings({
       packName: this.exportPackName,
       includeOriginals: this.exportIncludeOriginals,
-    }).catch((err) => console.warn('Failed to persist export options:', err));
+      pitchDetectionEnabled: this.pitchDetectionEnabled,
+    }).catch((err) => console.warn('Failed to persist settings:', err));
   }
 }
 

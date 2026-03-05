@@ -57,6 +57,7 @@ export class SampleBank extends LitElement {
 
   private bankCtrl = new BankStateController(this);
   @property({ type: Boolean }) pitchDebugMode = false;
+  @property({ type: Boolean }) pitchDetectionEnabled = false;
 
   override render() {
     return html`
@@ -73,6 +74,7 @@ export class SampleBank extends LitElement {
               @sample-move=${this.onSampleMove}
               @loop-update=${this.onLoopUpdate}
               @lofi-toggle=${this.onLofiToggle}
+              @note-change=${this.onNoteChange}
             ></sp-sample-slot>
           `,
         )}
@@ -83,7 +85,7 @@ export class SampleBank extends LitElement {
   private async onSampleImport(e: CustomEvent<{ index: number; file: File }>): Promise<void> {
     const { index, file } = e.detail;
     try {
-      const sample = await processAudioFile(file);
+      const sample = await processAudioFile(file, this.pitchDetectionEnabled);
       bankState.setSample(index, sample);
     } catch (err) {
       console.error('Failed to import sample:', err);
@@ -97,7 +99,7 @@ export class SampleBank extends LitElement {
     const limit = Math.min(files.length, MAX_SLOTS - index);
     for (let i = 0; i < limit; i++) {
       try {
-        const sample = await processAudioFile(files[i]);
+        const sample = await processAudioFile(files[i], this.pitchDetectionEnabled);
         bankState.setSample(index + i, sample);
       } catch (err) {
         console.error(`Failed to import sample ${files[i].name}:`, err);
@@ -119,6 +121,10 @@ export class SampleBank extends LitElement {
 
   private onLofiToggle(e: CustomEvent<{ index: number; lofi: LofiMode }>): void {
     bankState.updateSampleLofi(e.detail.index, e.detail.lofi);
+  }
+
+  private onNoteChange(e: CustomEvent<{ index: number; note: string | null }>): void {
+    bankState.updateSampleNote(e.detail.index, e.detail.note);
   }
 }
 

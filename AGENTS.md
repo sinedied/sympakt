@@ -120,14 +120,17 @@ npm run preview
 ## Pitch Detection
 
 - **Purpose**: automatically detect the fundamental frequency of each imported sample and display the corresponding musical note (e.g. C3, A#4, G2)
-- **Algorithm**: autocorrelation-based (NSDF — Normalized Square Difference Function) with parabolic interpolation for sub-sample accuracy. Analyzes multiple 40ms windows in the first 2 seconds of audio and takes the median detected frequency.
-- **Function**: `detectPitch(buffer: AudioBuffer): string | null` in `services/audio-engine.ts`; `frequencyToNote(freq: number): string | null` maps Hz to note name
+- **Global toggle**: pitch detection is off by default. Enable it in the Settings dialog (gear icon in header). The setting is persisted in IndexedDB across sessions.
+- **When enabled**: pitch detection runs on all current samples and on newly imported ones. When disabled, all existing pitch data is cleared.
+- **Algorithm**: McLeod Pitch Method (NSDF) with downsampling, zero-crossing rate filtering, and parabolic interpolation. Analyzes multiple windows in the first ~1.2s of audio and takes the median detected frequency.
+- **Function**: `detectPitch(buffer: AudioBuffer): string | null` and `detectPitchWithDebug(buffer)` in `services/audio-engine.ts`; `frequencyToNote(freq: number): string | null` maps Hz to note name
 - **Type**: `Sample.detectedNote: string | null` — null when no clear pitch is detected (e.g. noise, percussion)
-- **UI**: detected note is displayed in the sample slot between the sample name and duration, styled with the accent color
-- **Export filename**: when a note is detected, it is appended to the filename: `<slot>_<name>_<note>.wav` (e.g. `10_Kick_C3.wav`)
+- **Manual override**: clicking the detected note opens a dropdown with all notes C0–B7 plus "None". The selected note overrides auto-detection and is used in export/metadata.
+- **UI**: detected note is displayed in the sample slot between the sample name and duration, styled in blue. Click to change.
+- **Export filename**: when a note is set, it is appended to the filename: `<slot>_<name>_<note>.wav` (e.g. `10_Kick_C3.wav`)
 - **Metadata**: `detectedNote` field is included in `SlotMetadata` when present
 - **Persistence**: `detectedNote` is stored in IndexedDB and restored on page reload
-- **ZIP roundtrip**: note is stored in metadata JSON; on re-import, the stored note is used (falls back to re-detection if absent)
+- **ZIP roundtrip**: note is stored in metadata JSON; on re-import, the stored note is used (falls back to re-detection if pitch detection is enabled)
 - **Debug mode**: hidden pitch diagnostics can be toggled with **Cmd/Ctrl + Alt + D** (Shift optional) to display per-slot detection stats (clarity, ZCR, spread, rejection reason)
 
 ## LOFI / XLOFI Mode
@@ -150,7 +153,7 @@ npm run preview
 
 - All UI icons are inline SVGs defined in `src/icons.ts` using Lit `svg` tagged templates
 - Icons use `currentColor` for fill/stroke so they inherit the button's text color
-- Available icons: `iconPlay`, `iconStop`, `iconLoop`, `iconCheck`, `iconClose`, `iconPlus`, `iconHeart`
+- Available icons: `iconPlay`, `iconStop`, `iconLoop`, `iconCheck`, `iconClose`, `iconPlus`, `iconHeart`, `iconGear`
 - The heart icon uses pixel-art rendering (`shape-rendering="crispEdges"`) to match the pixel font aesthetic
 - When adding new icons, follow the same pattern: export a `const` from `icons.ts`
 
@@ -166,7 +169,7 @@ npm run preview
 - **Storage**: IndexedDB database `sympakt-db` with two object stores: `samples` (keyed by slot index) and `settings` (keyed by name)
 - **Auto-save**: bank state is debounced-saved (500ms) on every change via `bankState.notify()`
 - **AudioBuffer serialization**: channel data stored as `Float32Array[]` with `sampleRate`, `numberOfChannels`, and `length` metadata; waveform data is regenerated on restore via `generateWaveformData()`
-- **Export options persistence**: pack name and "include originals" flag saved to the `settings` store when changed and restored on load
+- **Export options persistence**: pack name, "include originals" flag, and pitch detection toggle saved to the `settings` store when changed and restored on load
 - **Restore**: `bankState.restoreFromDB()` + `loadSettings()` called in `AppShell.connectedCallback()`; restoring skips triggering a save cycle
 - **Clear**: `bankState.clearAll()` clears both in-memory slots and all IndexedDB data; export options are also reset to defaults
 - **Graceful degradation**: all persistence operations use try/catch; failures are logged but do not block the UI

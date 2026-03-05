@@ -27,7 +27,9 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
 - **5-second truncation** — samples exceeding max duration are truncated with visual warning
 - **LOFI / XLOFI mode** — extends max sample time to 10s (LOFI, 2× speed) or 20s (XLOFI, 4× speed) by exporting pitched up; preview simulates the bandwidth reduction with a lowpass filter
-- **Auto pitch detection** — detects the fundamental frequency of each sample and displays the musical note (e.g. C3, A#4); detected notes are included in exported filenames and metadata
+- **Auto pitch detection** — detects the fundamental frequency of each sample and displays the musical note (e.g. C3, A#4); detected notes are included in exported filenames and metadata. Enabled via Settings as an experimental feature.
+- **Manual note override** — click any detected note (or the dash placeholder) to open a dropdown and choose a different note or set it to "None"
+- **Global settings** — gear button in the header opens a settings dialog; settings are persisted across sessions
 - **Hidden pitch debug mode** — press Cmd/Ctrl + Alt + D (Shift optional) to toggle per-slot pitch diagnostics (confidence, ZCR, and rejection reason)
 - **Original file preservation** — optionally include source files in the exported archive
 - **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info

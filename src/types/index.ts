@@ -82,6 +82,16 @@ export interface ExportOptions {
   includeOriginals: boolean;
 }
 
+/** All musical notes from C0 to B7 for the note picker dropdown */
+export const ALL_NOTES: string[] = (() => {
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const notes: string[] = [];
+  for (let octave = 0; octave <= 7; octave++) {
+    for (const n of names) notes.push(`${n}${octave}`);
+  }
+  return notes;
+})();
+
 /** Constants */
 export const MAX_SLOTS = 64;
 export const MAX_SAMPLE_DURATION = 5; // seconds

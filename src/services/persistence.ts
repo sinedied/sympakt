@@ -29,6 +29,7 @@ interface StoredSample {
 export interface StoredSettings {
   packName?: string;
   includeOriginals?: boolean;
+  pitchDetectionEnabled?: boolean;
 }
 
 function openDB(): Promise<IDBDatabase> {

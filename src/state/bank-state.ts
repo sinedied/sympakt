@@ -70,6 +70,25 @@ class BankStateStore {
     this.notify();
   }
 
+  /** Update the detected note for a sample (manual override or clear) */
+  updateSampleNote(index: number, note: string | null): void {
+    const sample = this.slots[index];
+    if (!sample) return;
+    this.slots[index] = { ...sample, detectedNote: note };
+    this.notify();
+  }
+
+  /** Clear pitch detection data from all samples */
+  clearAllPitchData(): void {
+    for (let i = 0; i < this.slots.length; i++) {
+      const sample = this.slots[i];
+      if (sample && (sample.detectedNote !== null || sample.pitchDebug)) {
+        this.slots[i] = { ...sample, detectedNote: null, pitchDebug: undefined };
+      }
+    }
+    this.notify();
+  }
+
   /** Move a sample from one slot to another, shifting others */
   moveSample(fromIndex: number, toIndex: number): void {
     if (fromIndex === toIndex) return;

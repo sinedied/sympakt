@@ -119,6 +119,7 @@ export async function exportSamplePack(
  */
 export async function importSamplePack(
   file: File,
+  enablePitchDetection = false,
 ): Promise<{ slots: (Sample | null)[]; packName: string; includeOriginals: boolean; warning?: string }> {
   const arrayBuffer = await file.arrayBuffer();
   const unzipped = unzipSync(new Uint8Array(arrayBuffer));
@@ -225,7 +226,9 @@ export async function importSamplePack(
               downsampleFactor: 1,
             },
           }
-        : detectPitchWithDebug(resampled);
+        : enablePitchDetection
+          ? detectPitchWithDebug(resampled)
+          : { note: null, debug: undefined };
       const sample: Sample = {
         id: crypto.randomUUID(),
         name,
@@ -259,13 +262,13 @@ export async function importSamplePack(
 /**
  * Process a single audio file for import into a slot.
  */
-export async function processAudioFile(file: File): Promise<Sample> {
+export async function processAudioFile(file: File, enablePitchDetection = false): Promise<Sample> {
   const arrayBuffer = await file.arrayBuffer();
   const originalFile = new Uint8Array(arrayBuffer.slice(0));
   const audioBuffer = await decodeAudioFile(arrayBuffer);
   const resampled = await resampleToExportFormat(audioBuffer);
   const waveformData = generateWaveformData(audioBuffer);
-  const pitchResult = detectPitchWithDebug(resampled);
+  const pitchResult = enablePitchDetection ? detectPitchWithDebug(resampled) : { note: null, debug: undefined };
 
   return {
     id: crypto.randomUUID(),

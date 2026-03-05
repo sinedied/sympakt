@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration } from '../types/index.js';
+import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration, ALL_NOTES } from '../types/index.js';
 import type { LoopSettings, LofiMode } from '../types/index.js';
 import { playSample, playSampleLooped } from '../services/audio-engine.js';
 import { iconPlay, iconStop, iconLoop, iconCheck, iconClose, iconPlus } from '../icons.js';
@@ -77,22 +77,102 @@ export class SampleSlot extends LitElement {
         border: 1px dashed var(--border-color);
       }
 
+      .sample-name-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        align-self: stretch;
+        cursor: pointer;
+      }
+
+      .sample-name-wrap:hover .sample-name {
+        color: var(--text-secondary);
+      }
+
       .sample-name {
         font-family: var(--font-pixel);
         font-size: 7px;
         color: var(--text-primary);
-        min-width: 80px;
-        max-width: 120px;
+        max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        padding: 0 2px;
+      }
+
+      .sample-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 100;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        min-width: 100px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        white-space: nowrap;
+      }
+
+      .sample-menu .menu-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 4px 8px;
+        font-family: var(--font-pixel);
+        font-size: 7px;
+        border: none;
+        background: transparent;
+        color: var(--text-primary);
+        cursor: pointer;
+        min-width: 0;
+        height: auto;
+        position: relative;
+      }
+
+      .sample-menu .menu-item:hover {
+        background: var(--accent-glow);
+        color: var(--accent);
+      }
+
+      .sample-menu .submenu {
+        position: absolute;
+        left: 100%;
+        top: 0;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        max-height: 200px;
+        overflow-y: auto;
+        min-width: 56px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      }
+
+      .sample-menu .submenu button {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 3px 8px;
+        font-family: var(--font-pixel);
+        font-size: 7px;
+        border: none;
+        background: transparent;
+        color: var(--text-primary);
+        cursor: pointer;
+        min-width: 0;
+        height: auto;
+      }
+
+      .sample-menu .submenu button:hover {
+        background: var(--accent-glow);
+        color: var(--accent);
+      }
+
+      .sample-menu .submenu button.selected {
+        color: #4fc3f7;
       }
 
       .detected-note {
         font-family: var(--font-pixel);
         font-size: 7px;
         color: #4fc3f7;
-        min-width: 24px;
         text-align: center;
         white-space: nowrap;
       }
@@ -197,6 +277,8 @@ export class SampleSlot extends LitElement {
   @state() private dragging = false;
   @state() private playing = false;
   @state() private confirmingRemove = false;
+  @state() private sampleMenuOpen = false;
+  @state() private pitchSubmenuOpen = false;
   private stopFn?: () => void;
   private outsideClickHandler = this.onOutsideClick.bind(this);
 
@@ -242,7 +324,10 @@ export class SampleSlot extends LitElement {
 
         ${this.sample
           ? html`
-              <span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>
+              <span class="sample-name-wrap" @click=${this.toggleSampleMenu}>
+                <span class="sample-name" title="Click for options">${this.sample.name}</span>
+                ${this.sampleMenuOpen ? this.renderSampleMenu() : nothing}
+              </span>
               ${this.sample.detectedNote
                 ? html`<span class="detected-note" title="Detected pitch">${this.sample.detectedNote}</span>`
                 : nothing}
@@ -339,6 +424,60 @@ export class SampleSlot extends LitElement {
 
   private onOutsideClick(): void {
     this.confirmingRemove = false;
+    this.sampleMenuOpen = false;
+    this.pitchSubmenuOpen = false;
+  }
+
+  private toggleSampleMenu(e: Event): void {
+    e.stopPropagation();
+    this.sampleMenuOpen = !this.sampleMenuOpen;
+    this.pitchSubmenuOpen = false;
+    if (this.sampleMenuOpen) {
+      requestAnimationFrame(() => {
+        document.addEventListener('click', () => {
+          this.sampleMenuOpen = false;
+          this.pitchSubmenuOpen = false;
+        }, { once: true });
+      });
+    }
+  }
+
+  private renderSampleMenu() {
+    return html`
+      <div class="sample-menu" @click=${(e: Event) => e.stopPropagation()}>
+        <div class="menu-item"
+          @mouseenter=${() => { this.pitchSubmenuOpen = true; }}
+          @mouseleave=${() => { this.pitchSubmenuOpen = false; }}
+        >
+          Set pitch ▸
+          ${this.pitchSubmenuOpen ? this.renderPitchSubmenu() : nothing}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderPitchSubmenu() {
+    const current = this.sample?.detectedNote ?? null;
+    return html`
+      <div class="submenu">
+        <button class=${current === null ? 'selected' : ''} @click=${() => this.selectNote(null)}>None</button>
+        ${ALL_NOTES.map(
+          (note) => html`<button class=${current === note ? 'selected' : ''} @click=${() => this.selectNote(note)}>${note}</button>`,
+        )}
+      </div>
+    `;
+  }
+
+  private selectNote(note: string | null): void {
+    this.sampleMenuOpen = false;
+    this.pitchSubmenuOpen = false;
+    this.dispatchEvent(
+      new CustomEvent('note-change', {
+        detail: { index: this.index, note },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   private get effectiveMaxDuration(): number {
