@@ -74,13 +74,14 @@ The build outputs a single `index.html` in `dist/` with all JS, CSS, fonts, and 
 4. **Loop** — click the loop button to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
 5. **LOFI / XLOFI** — click **LO** to cycle through LOFI modes: off → LOFI (10s max, 2× speed) → XLOFI (20s max, 4× speed). On the Syntakt, pitch the sample down one octave (LOFI) or two octaves (XLOFI) to hear the original sound.
 6. **Remove** — click the × button to clear a slot (requires confirmation)
-7. **Dual sample mode** — right-click (or click) a sample name and choose **ENABLE DUAL SAMPLE** to split the slot into A and B halves. Drop or click to import a sample into each half. Each side has its own waveform, loop points, and playback controls. LOFI and delete affect the whole slot. To revert to single mode, click either sample name and choose **DISABLE DUAL SAMPLE**.
+7. **Rename** — click a sample name and choose **RENAME** to edit the display name inline. Press Enter to confirm or Escape to cancel. Works in both normal and dual split modes.
+8. **Dual sample mode** — click a sample name and choose **ENABLE DUAL SAMPLE** to split the slot into A and B halves. Drop or click to import a sample into each half. Each side has its own waveform, loop points, and playback controls. LOFI and delete affect the whole slot. To revert to single mode, click the A-side name and choose **DISABLE DUAL SAMPLE**.
 
    **On the Syntakt**: sample A is accessible at the regular slot position (1–64). To play sample B, set the playback direction to **reverse** — B is stored reversed at the end of the WAV, so reversing it plays the original sound. Use a short **decay** or **sample length** to isolate the half you want to hear, since both samples share the same WAV file.
 
-8. **Import a pack** — click **Import .zip** to load a previously exported sample pack
-9. **Export** — click **Export .zip**, set a pack name, toggle normalization, and optionally include original files
-10. **Virtual keyboard** — press **P** or click the keyboard icon to show a 2-octave piano; click a sample slot to select it, then play it chromatically using the on-screen keys or QWERTY shortcuts (A–J for white keys, W/E/T/Y/U for sharps). Use **←/→** to shift the octave range and **↑/↓** to switch between samples
+9. **Import a pack** — click **Import .zip** to load a previously exported sample pack
+10. **Export** — click **Export .zip**, set a pack name, toggle normalization, and optionally include original files
+11. **Virtual keyboard** — press **P** or click the keyboard icon to show a 2-octave piano; click a sample slot to select it, then play it chromatically using the on-screen keys or QWERTY shortcuts (A–J for white keys, W/E/T/Y/U for sharps). Use **←/→** to shift the octave range and **↑/↓** to switch between samples
 
 ### Import from ZIP
 

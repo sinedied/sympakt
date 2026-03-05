@@ -177,6 +177,18 @@ export class SampleSlot extends LitElement {
         color: #4fc3f7;
       }
 
+      .rename-input {
+        font-family: var(--font-pixel);
+        font-size: 7px;
+        color: var(--text-primary);
+        background: var(--bg-secondary);
+        border: 1px solid var(--accent);
+        outline: none;
+        padding: 0 2px;
+        max-width: 200px;
+        width: 100%;
+      }
+
       .detected-note {
         font-family: var(--font-pixel);
         font-size: 7px;
@@ -387,6 +399,7 @@ export class SampleSlot extends LitElement {
   @state() private splitMenuOpen = false;
   @state() private splitMenuOpenB = false;
   @state() private pitchSubmenuOpen = false;
+  @state() private renamingTarget: 'main' | 'a' | 'b' | null = null;
   private stopFn?: () => void;
   private stopFnB?: () => void;
   private outsideClickHandler = this.onOutsideClick.bind(this);
@@ -465,8 +478,15 @@ export class SampleSlot extends LitElement {
 
         ${this.sample
           ? html`
-              <span class="sample-name-wrap" @click=${this.toggleSampleMenu}>
-                <span class="sample-name" title="Click for options">${this.sample.name}</span>
+              <span class="sample-name-wrap">
+                ${this.renamingTarget === 'main'
+                  ? html`<input class="rename-input" type="text"
+                      .value=${this.sample.name}
+                      @keydown=${this.onRenameKeydown}
+                      @blur=${this.onRenameBlur}
+                      @click=${(e: Event) => e.stopPropagation()}
+                    />`
+                  : html`<span class="sample-name" title="Click for options" @click=${this.toggleSampleMenu}>${this.sample.name}</span>`}
                 ${this.sampleMenuOpen ? this.renderSampleMenu() : nothing}
               </span>
               ${this.sample.detectedNote
@@ -543,9 +563,16 @@ export class SampleSlot extends LitElement {
               @loop-change=${this.onLoopChange}
             ></sp-waveform>
           </div>
-          <span class="sample-name-wrap" @click=${this.toggleSplitMenu}>
-            <span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>
-            ${this.splitMenuOpen ? this.renderSplitMenu() : nothing}
+          <span class="sample-name-wrap">
+            ${this.renamingTarget === 'a'
+              ? html`<input class="rename-input" type="text"
+                  .value=${this.sample.name}
+                  @keydown=${this.onRenameKeydownA}
+                  @blur=${this.onRenameBlurA}
+                  @click=${(e: Event) => e.stopPropagation()}
+                />`
+              : html`<span class="sample-name" title=${this.sample.name} @click=${this.toggleSplitMenu}>${this.sample.name}</span>`}
+            ${this.splitMenuOpen ? this.renderSplitMenu('a') : nothing}
           </span>
           <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}">
             ${this.sample.loop
@@ -586,9 +613,16 @@ export class SampleSlot extends LitElement {
                     @loop-change=${this.onLoopChangeB}
                   ></sp-waveform>
                 </div>
-                <span class="sample-name-wrap" @click=${this.toggleSplitMenuB}>
-                  <span class="sample-name" title=${splitB.name}>${splitB.name}</span>
-                  ${this.splitMenuOpenB ? this.renderSplitMenu() : nothing}
+                <span class="sample-name-wrap">
+                  ${this.renamingTarget === 'b'
+                    ? html`<input class="rename-input" type="text"
+                        .value=${splitB.name}
+                        @keydown=${this.onRenameKeydownB}
+                        @blur=${this.onRenameBlurB}
+                        @click=${(e: Event) => e.stopPropagation()}
+                      />`
+                    : html`<span class="sample-name" title=${splitB.name} @click=${this.toggleSplitMenuB}>${splitB.name}</span>`}
+                  ${this.splitMenuOpenB ? this.renderSplitMenu('b') : nothing}
                 </span>
                 <span class="duration ${splitB.isTruncated && !splitB.loop ? 'truncated' : ''}">
                   ${splitB.loop
@@ -709,6 +743,9 @@ export class SampleSlot extends LitElement {
   private renderSampleMenu() {
     return html`
       <div class="sample-menu" @click=${(e: Event) => e.stopPropagation()}>
+        <button class="menu-item" @click=${() => this.startRename('main')}>
+          RENAME
+        </button>
         <div class="menu-item"
           @mouseenter=${() => { this.pitchSubmenuOpen = true; }}
           @mouseleave=${() => { this.pitchSubmenuOpen = false; }}
@@ -749,12 +786,17 @@ export class SampleSlot extends LitElement {
     }
   }
 
-  private renderSplitMenu() {
+  private renderSplitMenu(side: 'a' | 'b' = 'a') {
     return html`
       <div class="sample-menu" @click=${(e: Event) => e.stopPropagation()}>
-        <button class="menu-item" @click=${this.onToggleSplit}>
-          DISABLE DUAL SAMPLE
+        <button class="menu-item" @click=${() => this.startRename(side)}>
+          RENAME
         </button>
+        ${side === 'a' ? html`
+          <button class="menu-item" @click=${this.onToggleSplit}>
+            DISABLE DUAL SAMPLE
+          </button>
+        ` : nothing}
       </div>
     `;
   }
@@ -769,6 +811,92 @@ export class SampleSlot extends LitElement {
         )}
       </div>
     `;
+  }
+
+  private startRename(target: 'main' | 'a' | 'b'): void {
+    this.sampleMenuOpen = false;
+    this.splitMenuOpen = false;
+    this.splitMenuOpenB = false;
+    this.pitchSubmenuOpen = false;
+    this.renamingTarget = target;
+    this.updateComplete.then(() => {
+      const input = this.shadowRoot!.querySelector('.rename-input') as HTMLInputElement | null;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  private commitRename(target: 'main' | 'a' | 'b', value: string): void {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      this.renamingTarget = null;
+      return;
+    }
+    this.renamingTarget = null;
+    if (target === 'b') {
+      this.dispatchEvent(
+        new CustomEvent('split-sample-rename', {
+          detail: { index: this.index, name: trimmed },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    } else {
+      this.dispatchEvent(
+        new CustomEvent('sample-rename', {
+          detail: { index: this.index, name: trimmed },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
+  }
+
+  private onRenameKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.commitRename('main', (e.target as HTMLInputElement).value);
+    } else if (e.key === 'Escape') {
+      this.renamingTarget = null;
+    }
+  }
+
+  private onRenameBlur(e: FocusEvent): void {
+    if (this.renamingTarget === 'main') {
+      this.commitRename('main', (e.target as HTMLInputElement).value);
+    }
+  }
+
+  private onRenameKeydownA(e: KeyboardEvent): void {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.commitRename('a', (e.target as HTMLInputElement).value);
+    } else if (e.key === 'Escape') {
+      this.renamingTarget = null;
+    }
+  }
+
+  private onRenameBlurA(e: FocusEvent): void {
+    if (this.renamingTarget === 'a') {
+      this.commitRename('a', (e.target as HTMLInputElement).value);
+    }
+  }
+
+  private onRenameKeydownB(e: KeyboardEvent): void {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.commitRename('b', (e.target as HTMLInputElement).value);
+    } else if (e.key === 'Escape') {
+      this.renamingTarget = null;
+    }
+  }
+
+  private onRenameBlurB(e: FocusEvent): void {
+    if (this.renamingTarget === 'b') {
+      this.commitRename('b', (e.target as HTMLInputElement).value);
+    }
   }
 
   private selectNote(note: string | null): void {

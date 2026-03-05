@@ -105,6 +105,16 @@ npm run preview
 - Truncation: non-looped samples > 5s (or > 10s in LOFI, > 20s in XLOFI mode) show orange truncated region on waveform; truncation happens at export
 - WAV encoding: manual PCM encoding to ArrayBuffer (no library needed)
 
+## Sample Renaming
+
+- **Purpose**: allows users to rename any sample's display name directly from the slot UI
+- **Trigger**: click a sample name to open the context menu, then choose **RENAME** (first menu item). Available in both normal mode and dual split mode (A and B sides).
+- **UI**: the name label is replaced with an inline text input, auto-focused and pre-selected. Press **Enter** to confirm, **Escape** to cancel, or click away (blur) to confirm.
+- **Events**: `sample-rename` (dispatched for main/A-side names, detail: `{ index, name }`), `split-sample-rename` (dispatched for B-side names, detail: `{ index, name }`)
+- **State**: `bankState.renameSample(index, name)` updates `Sample.name`; `bankState.renameSplitSample(index, name)` updates `SplitSample.name`
+- **Persistence**: the renamed name is persisted in IndexedDB (it's just `Sample.name`) and included in exported metadata JSON
+- **Export**: the renamed name is used in the export filename: `<slot>_<name>[_<note>].wav`
+
 ## Loop Editing
 
 - **Toggle**: each slot has a loop button (loop icon); enabling sets loop from 10% to end of sample (capped at 5s) with 10% crossfade duration

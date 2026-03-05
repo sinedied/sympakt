@@ -110,6 +110,25 @@ class BankStateStore {
     this.notify();
   }
 
+  /** Rename a sample */
+  renameSample(index: number, name: string): void {
+    const sample = this.slots[index];
+    if (!sample) return;
+    this.slots[index] = { ...sample, name };
+    this.notify();
+  }
+
+  /** Rename the B-side sample in a dual split slot */
+  renameSplitSample(index: number, name: string): void {
+    const sample = this.slots[index];
+    if (!sample?.splitSample) return;
+    this.slots[index] = {
+      ...sample,
+      splitSample: { ...sample.splitSample, name },
+    };
+    this.notify();
+  }
+
   /** Update the detected note for a sample (manual override or clear) */
   updateSampleNote(index: number, note: string | null): void {
     const sample = this.slots[index];

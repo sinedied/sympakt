@@ -83,6 +83,8 @@ export class SampleBank extends LitElement {
               @split-sample-import=${this.onSplitSampleImport}
               @split-sample-remove=${this.onSplitSampleRemove}
               @split-loop-update=${this.onSplitLoopUpdate}
+              @sample-rename=${this.onSampleRename}
+              @split-sample-rename=${this.onSplitSampleRename}
             ></sp-sample-slot>
           `,
         )}
@@ -172,6 +174,14 @@ export class SampleBank extends LitElement {
 
   private onSplitLoopUpdate(e: CustomEvent<{ index: number; loop: LoopSettings | null }>): void {
     bankState.updateSplitSampleLoop(e.detail.index, e.detail.loop);
+  }
+
+  private onSampleRename(e: CustomEvent<{ index: number; name: string }>): void {
+    bankState.renameSample(e.detail.index, e.detail.name);
+  }
+
+  private onSplitSampleRename(e: CustomEvent<{ index: number; name: string }>): void {
+    bankState.renameSplitSample(e.detail.index, e.detail.name);
   }
 }
 
