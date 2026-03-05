@@ -45,7 +45,7 @@ export class AppShell extends LitElement {
 
       .logo {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         gap: 8px;
       }
 
@@ -56,6 +56,7 @@ export class AppShell extends LitElement {
         text-transform: uppercase;
         letter-spacing: 3px;
         margin: 0;
+        line-height: 1;
       }
 
       .subtitle {
@@ -64,6 +65,21 @@ export class AppShell extends LitElement {
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 1px;
+        line-height: 1;
+      }
+
+      @media (max-width: 768px) {
+        .logo {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .subtitle {
+          display: none;
+        }
       }
 
       .toolbar {
