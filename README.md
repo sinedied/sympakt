@@ -4,12 +4,12 @@
 
 **Sample Pack Manager for the Elektron Syntakt**
 
-[![Built with Lit](https://img.shields.io/badge/Built_with-Lit-324FFF?style=flat-square)](https://lit.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6+-646CFF?style=flat-square)](https://vite.dev)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+[![Elektron Syntakt](https://img.shields.io/badge/Elektron-Syntakt-E84142?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNTAgMTUwIj48cGF0aCBkPSJNNC45IDEyNC44TDI1LjEgMjVIMTQ1bC0yMSA5OS43LTExOS4xLjF6TTM2IDM2LjNsLTE2IDc3LjNoOTEuOGw0LjgtMjEuOWgtNDRsNTQtNTUuNEgzNnoiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==)](https://www.elektron.se/syntakt)
+[![Lit](https://img.shields.io/badge/Lit-%23324FFF.svg?style=flat-square&logo=lit&logoColor=white)](https://lit.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-%23007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-44CC11?style=flat-square)](LICENSE)
 
-[Features](#features) · [Getting Started](#getting-started) · [Usage](#usage) · [Export Format](#export-format)
+[Features](#features) · [Usage](#usage) · [Export Format](#export-format) · [Development](#development)
 
 ⭐ If you find this useful, give it a star on GitHub!
 
@@ -27,33 +27,9 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Virtual keyboard** — 2-octave chromatic keyboard to audition samples at different pitches
 - **Fully offline & private** — single self-contained HTML file, zero backend, session auto-saved in browser
 
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 24 or later
-
-### Install & Run
-
-```bash
-git clone https://github.com/<your-username>/sympackt.git
-cd sympackt
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-### Build for Production
-
-```bash
-npm run build
-npm run preview   # preview the production build locally
-```
-
-The build outputs a single `index.html` in `dist/` with all JS, CSS, fonts, and the favicon inlined. You can open it directly in any browser — no server needed.
-
 ## Usage
+
+**[Try Sympakt online →](https://sinedied.github.io/sympakt/)**
 
 1. **Import samples** — drag audio files onto any slot, or click the **+** button to browse
 2. **Reorder** — drag slots to rearrange the bank
@@ -85,8 +61,34 @@ Exported `.zip` files contain:
 |------|-------------|
 | `01_kick_C3.wav` … `64_pad.wav` | 16-bit, 48 kHz, mono WAV files (note appended to name if detected) |
 | `01_kick-snare_DUAL.wav` | Dual sample slot: A in first half, B reversed in second half |
-| `sympakt.json` | Pack name, slot mappings, durations, loop settings, original filenames, , if "Include originals" is checked |
+| `sympakt.json` | Pack name, slot mappings, durations, loop settings, original filenames |
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 
 > [!NOTE]
 > Non-looped samples longer than 5 seconds are automatically truncated on export (10 seconds in LOFI mode, 20 seconds in XLOFI mode). Looped samples export only the selected loop region with crossfade applied. LOFI samples are exported at 2× speed (pitch down one octave on Syntakt), XLOFI at 4× speed (pitch down two octaves). Dual sample slots are exported as a single WAV with A in the first half and B reversed in the second half, separated by 20ms of silence — each side can be up to 2.49s (normal), 4.99s (LOFI), or 9.99s (XLOFI). Samples are normalized to peak volume by default.
+
+## Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 24 or later
+
+### Install & Run
+
+```bash
+git clone https://github.com/sinedied/sympakt.git
+cd sympakt
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Build for Production
+
+```bash
+npm run build
+npm run preview   # preview the production build locally
+```
+
+The build outputs a single `index.html` in `dist/` with all JS, CSS, fonts, and the favicon inlined. You can open it directly in any browser — no server needed.
