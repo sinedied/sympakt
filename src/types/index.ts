@@ -1,6 +1,18 @@
 /** LOFI mode: off = normal, lofi = 2× speed (10s max), xlofi = 4× speed (20s max) */
 export type LofiMode = 'off' | 'lofi' | 'xlofi';
 
+export interface PitchDebugInfo {
+  detectedFrequency: number | null;
+  detectedNote: string | null;
+  detections: number;
+  avgClarity: number;
+  avgZcr: number;
+  spreadRatio: number | null;
+  rejectedReason: string | null;
+  analysisRate: number;
+  downsampleFactor: number;
+}
+
 /** Represents a single sample in the bank */
 export interface Sample {
   /** Unique identifier */
@@ -25,6 +37,8 @@ export interface Sample {
   lofi: LofiMode;
   /** Auto-detected musical note (e.g. "C3", "A#4"), null if no clear pitch */
   detectedNote: string | null;
+  /** Optional debug info from pitch detection analysis */
+  pitchDebug?: PitchDebugInfo;
 }
 
 /** Loop point and crossfade settings for seamless looping */

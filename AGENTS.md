@@ -128,6 +128,7 @@ npm run preview
 - **Metadata**: `detectedNote` field is included in `SlotMetadata` when present
 - **Persistence**: `detectedNote` is stored in IndexedDB and restored on page reload
 - **ZIP roundtrip**: note is stored in metadata JSON; on re-import, the stored note is used (falls back to re-detection if absent)
+- **Debug mode**: hidden pitch diagnostics can be toggled with **Cmd/Ctrl + Alt + D** (Shift optional) to display per-slot detection stats (clarity, ZCR, spread, rejection reason)
 
 ## LOFI / XLOFI Mode
 

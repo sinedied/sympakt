@@ -76,6 +76,15 @@ export class AppShell extends LitElement {
         margin-right: 8px;
       }
 
+      .debug-badge {
+        font-family: var(--font-pixel);
+        font-size: 7px;
+        color: #4fc3f7;
+        border: 1px solid #4fc3f7;
+        padding: 2px 6px;
+        letter-spacing: 1px;
+      }
+
       main {
         flex: 1;
         overflow: hidden;
@@ -168,13 +177,21 @@ export class AppShell extends LitElement {
   @state() private exportIncludeOriginals = false;
   @state() private exportPackName = 'My Sample Pack';
   @state() private headerDragOver = false;
+  @state() private pitchDebugMode = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
+  private keydownHandler = this.onKeyDown.bind(this);
 
   override connectedCallback(): void {
     super.connectedCallback();
+    window.addEventListener('keydown', this.keydownHandler);
     this.restoreSession();
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('keydown', this.keydownHandler);
   }
 
   private async restoreSession(): Promise<void> {
@@ -211,6 +228,7 @@ export class AppShell extends LitElement {
         </div>
         <div class="toolbar">
           <span class="slot-count" title="Filled slots out of 64">${filledSlots}/64</span>
+          ${this.pitchDebugMode ? html`<span class="debug-badge" title="Pitch debug mode enabled">DBG</span>` : nothing}
           <button
             class=${this.headerDragOver ? 'import-highlight' : ''}
             @click=${this.onImportZip}
@@ -234,7 +252,7 @@ export class AppShell extends LitElement {
       </header>
 
       <main>
-        <sp-sample-bank></sp-sample-bank>
+        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode}></sp-sample-bank>
       </main>
 
       <footer>
@@ -364,6 +382,18 @@ export class AppShell extends LitElement {
       this.exportPackName = 'My Sample Pack';
       this.exportIncludeOriginals = false;
       this.showNotification('All slots cleared');
+    }
+  }
+
+  private onKeyDown(e: KeyboardEvent): void {
+    // Secret combo: Cmd/Ctrl + Alt + D (Shift optional)
+    // Use `code` for keyboard-layout safety on macOS.
+    const isModifierMatch = (e.metaKey || e.ctrlKey) && e.altKey;
+    const isDKey = e.code === 'KeyD' || e.key.toLowerCase() === 'd';
+    if (isModifierMatch && isDKey) {
+      e.preventDefault();
+      this.pitchDebugMode = !this.pitchDebugMode;
+      this.showNotification(`Pitch debug ${this.pitchDebugMode ? 'ON' : 'OFF'}`);
     }
   }
 

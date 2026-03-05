@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import { processAudioFile } from '../services/zip-service.js';
@@ -56,6 +56,7 @@ export class SampleBank extends LitElement {
   ];
 
   private bankCtrl = new BankStateController(this);
+  @property({ type: Boolean }) pitchDebugMode = false;
 
   override render() {
     return html`
@@ -65,6 +66,7 @@ export class SampleBank extends LitElement {
             <sp-sample-slot
               .index=${i}
               .sample=${sample}
+              .pitchDebugMode=${this.pitchDebugMode}
               @sample-import=${this.onSampleImport}
               @sample-import-batch=${this.onSampleImportBatch}
               @sample-remove=${this.onSampleRemove}

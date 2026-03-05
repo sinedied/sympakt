@@ -109,6 +109,15 @@ export class SampleSlot extends LitElement {
         color: var(--warning);
       }
 
+      .pitch-debug {
+        font-family: var(--font-mono);
+        font-size: 8px;
+        color: var(--text-muted);
+        min-width: 96px;
+        text-align: left;
+        white-space: nowrap;
+      }
+
       .actions {
         display: flex;
         gap: 4px;
@@ -182,6 +191,7 @@ export class SampleSlot extends LitElement {
 
   @property({ type: Number }) index = 0;
   @property({ type: Object }) sample: Sample | null = null;
+  @property({ type: Boolean }) pitchDebugMode = false;
 
   @state() private dragOver = false;
   @state() private dragging = false;
@@ -235,6 +245,13 @@ export class SampleSlot extends LitElement {
               <span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>
               ${this.sample.detectedNote
                 ? html`<span class="detected-note" title="Detected pitch">${this.sample.detectedNote}</span>`
+                : nothing}
+              ${this.pitchDebugMode
+                ? html`
+                    <span class="pitch-debug" title=${this.pitchDebugTitle}>
+                      ${this.pitchDebugLabel}
+                    </span>
+                  `
                 : nothing}
               <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}"
                 title="${this.sample.loop
@@ -351,6 +368,35 @@ export class SampleSlot extends LitElement {
       case 'lofi': return 'Enable XLOFI — 20s max, pitched up 2 octaves (quarter sample rate)';
       default: return 'Enable LOFI — 10s max, pitched up 1 octave (half sample rate)';
     }
+  }
+
+  private get pitchDebugLabel(): string {
+    if (!this.sample) return '';
+    if (!this.sample.pitchDebug) return 'dbg:no-data';
+    const debug = this.sample.pitchDebug;
+    if (debug.rejectedReason) {
+      return `dbg:${debug.rejectedReason}`;
+    }
+    return `dbg c${debug.avgClarity.toFixed(2)} z${debug.avgZcr.toFixed(2)}`;
+  }
+
+  private get pitchDebugTitle(): string {
+    if (!this.sample) return '';
+    if (!this.sample.pitchDebug) return 'No pitch diagnostics available for this sample. Re-import to regenerate diagnostics.';
+    const debug = this.sample.pitchDebug;
+    const freq = debug.detectedFrequency !== null ? `${debug.detectedFrequency.toFixed(1)}Hz` : 'n/a';
+    const spread = debug.spreadRatio !== null ? debug.spreadRatio.toFixed(3) : 'n/a';
+    return [
+      `freq: ${freq}`,
+      `note: ${debug.detectedNote ?? 'none'}`,
+      `detections: ${debug.detections}`,
+      `clarity: ${debug.avgClarity.toFixed(3)}`,
+      `zcr: ${debug.avgZcr.toFixed(3)}`,
+      `spread: ${spread}`,
+      `rate: ${Math.round(debug.analysisRate)}Hz`,
+      `factor: ${debug.downsampleFactor}`,
+      `reason: ${debug.rejectedReason ?? 'accepted'}`,
+    ].join(' · ');
   }
 
   private toggleLoop(): void {

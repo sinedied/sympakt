@@ -18,7 +18,7 @@ import {
   generateWaveformData,
   getMonoPCM,
   applyCrossfade,
-  detectPitch,
+  detectPitchWithDebug,
 } from './audio-engine.js';
 import { encodeWav } from './wav-encoder.js';
 
@@ -210,6 +210,22 @@ export async function importSamplePack(
       const waveformData = generateWaveformData(resampled);
 
       const lofiMode = normalizeLofiMode(slotMeta?.lofi);
+      const pitchResult = slotMeta?.detectedNote
+        ? {
+            note: slotMeta.detectedNote,
+            debug: {
+              detectedFrequency: null,
+              detectedNote: slotMeta.detectedNote,
+              detections: 0,
+              avgClarity: 0,
+              avgZcr: 0,
+              spreadRatio: null,
+              rejectedReason: 'from-metadata',
+              analysisRate: resampled.sampleRate,
+              downsampleFactor: 1,
+            },
+          }
+        : detectPitchWithDebug(resampled);
       const sample: Sample = {
         id: crypto.randomUUID(),
         name,
@@ -221,7 +237,8 @@ export async function importSamplePack(
         originalFile,
         loop: slotMeta?.loop ?? null,
         lofi: lofiMode,
-        detectedNote: slotMeta?.detectedNote ?? detectPitch(resampled),
+        detectedNote: pitchResult.note,
+        pitchDebug: pitchResult.debug,
       };
 
       slots[targetSlot] = sample;
@@ -248,6 +265,7 @@ export async function processAudioFile(file: File): Promise<Sample> {
   const audioBuffer = await decodeAudioFile(arrayBuffer);
   const resampled = await resampleToExportFormat(audioBuffer);
   const waveformData = generateWaveformData(audioBuffer);
+  const pitchResult = detectPitchWithDebug(resampled);
 
   return {
     id: crypto.randomUUID(),
@@ -260,7 +278,8 @@ export async function processAudioFile(file: File): Promise<Sample> {
     originalFile,
     loop: null,
     lofi: 'off',
-    detectedNote: detectPitch(resampled),
+    detectedNote: pitchResult.note,
+    pitchDebug: pitchResult.debug,
   };
 }
 

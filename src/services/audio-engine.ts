@@ -4,6 +4,7 @@ import {
   WAVEFORM_COLUMNS,
   LoopSettings,
   LofiMode,
+  PitchDebugInfo,
   getLofiSpeedFactor,
   isLofiActive,
 } from '../types/index.js';
@@ -242,6 +243,7 @@ export function findNearestZeroCrossing(
 // ── Pitch detection ──────────────────────────────────────
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const D6_FREQUENCY = 1174.66;
 
 /**
  * Map a frequency (Hz) to its nearest musical note string (e.g. "C3", "A#4").
@@ -264,60 +266,304 @@ export function frequencyToNote(freq: number): string | null {
  * Returns the detected note string (e.g. "C3") or null if no clear pitch.
  */
 export function detectPitch(buffer: AudioBuffer): string | null {
+  return detectPitchWithDebug(buffer).note;
+}
+
+/**
+ * Detect pitch with diagnostics for hidden debug mode.
+ */
+export function detectPitchWithDebug(buffer: AudioBuffer): { note: string | null; debug: PitchDebugInfo } {
   const pcm = buffer.getChannelData(0);
   const sourceRate = buffer.sampleRate;
 
-  // Keep analysis short for performance (major import-time win)
+  // Analyze a bit longer for better stability on sustained tones
   const analysisDuration = 1.2;
   const maxSamples = Math.min(pcm.length, Math.round(sourceRate * analysisDuration));
-  if (maxSamples < 512) return null;
+  if (maxSamples < 512) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: 0,
+        avgClarity: 0,
+        avgZcr: 0,
+        spreadRatio: null,
+        rejectedReason: 'too-short',
+        analysisRate: sourceRate,
+        downsampleFactor: 1,
+      },
+    };
+  }
 
   // Basic level gate
   let rms = 0;
   for (let i = 0; i < maxSamples; i++) rms += pcm[i] * pcm[i];
   rms = Math.sqrt(rms / maxSamples);
-  if (rms < 0.01) return null;
+  if (rms < 0.01) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: 0,
+        avgClarity: 0,
+        avgZcr: 0,
+        spreadRatio: null,
+        rejectedReason: 'too-quiet',
+        analysisRate: sourceRate,
+        downsampleFactor: 1,
+      },
+    };
+  }
 
-  // Skip attack transient
-  const skipSamples = Math.min(maxSamples - 1, Math.round(sourceRate * 0.04));
-  if (maxSamples - skipSamples < 512) return null;
+  // Skip attack transient (adaptive): keep enough body for very short sounds
+  const desiredSkip = Math.round(sourceRate * 0.07);
+  const maxSkipForLength = Math.max(0, maxSamples - 512);
+  const skipSamples = Math.min(desiredSkip, Math.floor(maxSamples * 0.2), maxSkipForLength);
+  if (maxSamples - skipSamples < 512) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: 0,
+        avgClarity: 0,
+        avgZcr: 0,
+        spreadRatio: null,
+        rejectedReason: 'no-sustain',
+        analysisRate: sourceRate,
+        downsampleFactor: 1,
+      },
+    };
+  }
 
-  // Downsample to ~12 kHz for much cheaper autocorrelation
+  // Downsample to ~12 kHz for better pitch resolution
   const targetRate = 12_000;
   const downsampleFactor = Math.max(1, Math.floor(sourceRate / targetRate));
   const analysisRate = sourceRate / downsampleFactor;
   const analysisPcm = downsampleMono(pcm.subarray(skipSamples, maxSamples), downsampleFactor);
 
   const windowSize = Math.min(analysisPcm.length, Math.round(analysisRate * 0.06)); // 60 ms
-  if (windowSize < 256) return null;
+  if (windowSize < 192) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: 0,
+        avgClarity: 0,
+        avgZcr: 0,
+        spreadRatio: null,
+        rejectedReason: 'window-too-small',
+        analysisRate,
+        downsampleFactor,
+      },
+    };
+  }
+
+  const analyzedDurationSec = maxSamples / sourceRate;
 
   const maxWindows = 6;
-  const stride = Math.max(1, Math.floor((analysisPcm.length - windowSize * 2) / maxWindows));
+  const stride = Math.max(1, Math.floor((analysisPcm.length - windowSize) / maxWindows));
   const detections: Array<{ freq: number; clarity: number }> = [];
+  const zcrValues: number[] = [];
 
-  for (let offset = 0; offset + windowSize * 2 <= analysisPcm.length; offset += stride) {
-    // Noise/percussive rejection: very high ZCR usually indicates unpitched content
+  for (let offset = 0; offset + windowSize <= analysisPcm.length; offset += stride) {
+    // Noise/percussive rejection: high ZCR usually indicates unpitched content
     const zcr = computeZeroCrossingRate(analysisPcm, offset, windowSize);
-    if (zcr > 0.22) continue;
+    zcrValues.push(zcr);
+    const zcrGate = analyzedDurationSec < 0.12 ? 0.22 : 0.15;
+    if (zcr > zcrGate) continue;
 
     const detection = mpmDetectWindow(analysisPcm, offset, windowSize, analysisRate);
     if (detection) detections.push(detection);
     if (detections.length >= maxWindows) break;
   }
 
-  // Need consistent windows
-  if (detections.length < 2) return null;
+  const avgZcr = zcrValues.length > 0
+    ? zcrValues.reduce((sum, value) => sum + value, 0) / zcrValues.length
+    : 0;
+
+  // Need consistent windows across the sample (adaptive for short material)
+  const minDetections = analyzedDurationSec < 0.12 ? 1 : analyzedDurationSec < 0.25 ? 2 : 3;
+
+  if (detections.length === 0) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: 0,
+        avgClarity: 0,
+        avgZcr,
+        spreadRatio: null,
+        rejectedReason: 'no-detections',
+        analysisRate,
+        downsampleFactor,
+      },
+    };
+  }
+
+  if (detections.length < minDetections) {
+    const avgClarityFew = detections.reduce((sum, d) => sum + d.clarity, 0) / detections.length;
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: detections.length,
+        avgClarity: avgClarityFew,
+        avgZcr,
+        spreadRatio: null,
+        rejectedReason: 'not-enough-consistent-windows',
+        analysisRate,
+        downsampleFactor,
+      },
+    };
+  }
 
   const freqs = detections.map((d) => d.freq).sort((a, b) => a - b);
-  const q1 = freqs[Math.floor(freqs.length * 0.25)];
-  const q3 = freqs[Math.floor(freqs.length * 0.75)];
-  if (q3 / q1 > 1.12) return null;
-
+  const q1 = freqs[Math.floor((freqs.length - 1) * 0.25)];
+  const q3 = freqs[Math.floor((freqs.length - 1) * 0.75)];
+  const spreadRatio = q1 > 0 ? q3 / q1 : null;
   const avgClarity = detections.reduce((sum, d) => sum + d.clarity, 0) / detections.length;
-  if (avgClarity < 0.78) return null;
 
-  const medianFreq = freqs[Math.floor(freqs.length / 2)];
-  return frequencyToNote(medianFreq);
+  const midiBins = freqs.map((freq) => Math.round(12 * Math.log2(freq / 440) + 69));
+  const midiCounts = new Map<number, number>();
+  for (const midi of midiBins) {
+    midiCounts.set(midi, (midiCounts.get(midi) ?? 0) + 1);
+  }
+  let modeMidi = midiBins[0] ?? 0;
+  let modeCount = 0;
+  for (const [midi, count] of midiCounts.entries()) {
+    if (count > modeCount) {
+      modeCount = count;
+      modeMidi = midi;
+    }
+  }
+  const modeRatio = detections.length > 0 ? modeCount / detections.length : 0;
+  const hasConsensus = modeCount >= 2 && modeRatio >= 0.4;
+
+  const spreadGate = analyzedDurationSec < 0.2 ? 1.45 : detections.length < 4 ? 1.35 : 1.28;
+  if (spreadRatio !== null && spreadRatio > spreadGate && !hasConsensus) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: detections.length,
+        avgClarity,
+        avgZcr,
+        spreadRatio,
+        rejectedReason: 'inconsistent-frequency',
+        analysisRate,
+        downsampleFactor,
+      },
+    };
+  }
+
+  const clarityGate = analyzedDurationSec < 0.12 ? 0.62 : 0.72;
+  if (avgClarity < clarityGate) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: detections.length,
+        avgClarity,
+        avgZcr,
+        spreadRatio,
+        rejectedReason: 'low-clarity',
+        analysisRate,
+        downsampleFactor,
+      },
+    };
+  }
+
+  const consensusFreq = 440 * (2 ** ((modeMidi - 69) / 12));
+  const medianFreq = hasConsensus ? consensusFreq : freqs[Math.floor(freqs.length / 2)];
+
+  const midiNote = Math.round(12 * Math.log2(medianFreq / 440) + 69);
+
+  if (medianFreq >= D6_FREQUENCY || midiNote >= 86) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: detections.length,
+        avgClarity,
+        avgZcr,
+        spreadRatio,
+        rejectedReason: 'above-max-fundamental',
+        analysisRate,
+        downsampleFactor,
+      },
+    };
+  }
+
+  // High-frequency safeguard: don't trust high note detections unless highly stable.
+  // This keeps legitimate high tones while rejecting BD/HH attack artifacts.
+  if (medianFreq > 520) {
+    const highFreqReliable =
+      detections.length >= 4 &&
+      avgClarity >= 0.84 &&
+      avgZcr <= 0.1 &&
+      spreadRatio !== null &&
+      spreadRatio <= 1.08;
+
+    if (!highFreqReliable) {
+      return {
+        note: null,
+        debug: {
+          detectedFrequency: null,
+          detectedNote: null,
+          detections: detections.length,
+          avgClarity,
+          avgZcr,
+          spreadRatio,
+          rejectedReason: 'high-freq-unreliable',
+          analysisRate,
+          downsampleFactor,
+        },
+      };
+    }
+  }
+
+  const note = frequencyToNote(medianFreq);
+
+  if (!note) {
+    return {
+      note: null,
+      debug: {
+        detectedFrequency: null,
+        detectedNote: null,
+        detections: detections.length,
+        avgClarity,
+        avgZcr,
+        spreadRatio,
+        rejectedReason: 'note-out-of-range',
+        analysisRate,
+        downsampleFactor,
+      },
+    };
+  }
+
+  return {
+    note,
+    debug: {
+      detectedFrequency: medianFreq,
+      detectedNote: note,
+      detections: detections.length,
+      avgClarity,
+      avgZcr,
+      spreadRatio,
+      rejectedReason: null,
+      analysisRate,
+      downsampleFactor,
+    },
+  };
 }
 
 /**
@@ -365,7 +611,7 @@ function mpmDetectWindow(
 ): { freq: number; clarity: number } | null {
   // Restrict to realistic pack content range to avoid high-octave false positives.
   const minHz = 55;   // A1
-  const maxHz = 1100; // C6-ish ceiling
+  const maxHz = 1100; // broad range; high-frequency reliability filtering happens later
 
   const minPeriod = Math.max(2, Math.floor(sampleRate / maxHz));
   const maxPeriod = Math.min(windowSize - 1, Math.floor(sampleRate / minHz));
@@ -418,7 +664,7 @@ function mpmDetectWindow(
     if (p.value > globalMax) globalMax = p.value;
   }
 
-  if (globalMax < 0.75) return null;
+  if (globalMax < 0.68) return null;
 
   // Select the largest-period peak among near-max peaks.
   // This biases toward the true fundamental instead of upper harmonics.
@@ -440,7 +686,7 @@ function mpmDetectWindow(
     const denom = 2 * (2 * y1 - y0 - y2);
     if (Math.abs(denom) > 1e-12) {
       const shift = (y0 - y2) / denom;
-      const refinedPeriod = tau + Math.max(-1, Math.min(1, shift));
+      const refinedPeriod = Math.max(minPeriod, Math.min(maxPeriod, tau + Math.max(-1, Math.min(1, shift))));
       return { freq: sampleRate / refinedPeriod, clarity: bestPeak.value };
     }
   }
