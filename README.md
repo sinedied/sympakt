@@ -15,6 +15,8 @@
 
 </div>
 
+![Screenshot of the Sympakt app in action](./docs/images/screenshot.png)
+
 Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](https://www.elektron.se/syntakt), entirely from your browser.
 
 ## Features
