@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration } from '../types/index.js';
@@ -85,6 +85,15 @@ export class SampleSlot extends LitElement {
         max-width: 120px;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .detected-note {
+        font-family: var(--font-pixel);
+        font-size: 7px;
+        color: #4fc3f7;
+        min-width: 24px;
+        text-align: center;
         white-space: nowrap;
       }
 
@@ -224,6 +233,9 @@ export class SampleSlot extends LitElement {
         ${this.sample
           ? html`
               <span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>
+              ${this.sample.detectedNote
+                ? html`<span class="detected-note" title="Detected pitch">${this.sample.detectedNote}</span>`
+                : nothing}
               <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}"
                 title="${this.sample.loop
                   ? 'Loop duration'

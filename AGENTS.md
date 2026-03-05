@@ -59,8 +59,8 @@ src/
 - **Max sample length**: looped samples export only the loop region; non-looped samples are truncated to 5 seconds (10 seconds in LOFI mode)
 - **Max loop duration**: 5 seconds (10 seconds in LOFI mode)
 - **Bank size**: exactly 64 slots
-- **File naming on export**: `<slot_number>_<sample_name>.wav` (e.g., `01_kick.wav`)
-- **Metadata**: JSON file included in exported ZIP with original filenames, sample options, loop settings, and structure
+- **File naming on export**: `<slot_number>_<sample_name>[_<detected_note>].wav` (e.g., `01_kick.wav`, `10_Kick_C3.wav`)
+- **Metadata**: JSON file included in exported ZIP with original filenames, sample options, loop settings, detected notes, and structure
 - **Audio buffer preservation**: full audio duration is kept in memory (no truncation at import); truncation/extraction happens only at export time
 
 ## Development Workflow
@@ -116,6 +116,18 @@ npm run preview
 - **Playback preview**: looped playback with crossfade baked in via Web Audio API `AudioBufferSourceNode.loop`
 - **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s (10s in LOFI, 20s in XLOFI mode)
 - **ZIP roundtrip**: loop settings and LOFI mode are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
+
+## Pitch Detection
+
+- **Purpose**: automatically detect the fundamental frequency of each imported sample and display the corresponding musical note (e.g. C3, A#4, G2)
+- **Algorithm**: autocorrelation-based (NSDF — Normalized Square Difference Function) with parabolic interpolation for sub-sample accuracy. Analyzes multiple 40ms windows in the first 2 seconds of audio and takes the median detected frequency.
+- **Function**: `detectPitch(buffer: AudioBuffer): string | null` in `services/audio-engine.ts`; `frequencyToNote(freq: number): string | null` maps Hz to note name
+- **Type**: `Sample.detectedNote: string | null` — null when no clear pitch is detected (e.g. noise, percussion)
+- **UI**: detected note is displayed in the sample slot between the sample name and duration, styled with the accent color
+- **Export filename**: when a note is detected, it is appended to the filename: `<slot>_<name>_<note>.wav` (e.g. `10_Kick_C3.wav`)
+- **Metadata**: `detectedNote` field is included in `SlotMetadata` when present
+- **Persistence**: `detectedNote` is stored in IndexedDB and restored on page reload
+- **ZIP roundtrip**: note is stored in metadata JSON; on re-import, the stored note is used (falls back to re-detection if absent)
 
 ## LOFI / XLOFI Mode
 

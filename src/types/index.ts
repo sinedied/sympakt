@@ -23,6 +23,8 @@ export interface Sample {
   loop: LoopSettings | null;
   /** LOFI mode: off, lofi (2× speed, 10s max), or xlofi (4× speed, 20s max) */
   lofi: LofiMode;
+  /** Auto-detected musical note (e.g. "C3", "A#4"), null if no clear pitch */
+  detectedNote: string | null;
 }
 
 /** Loop point and crossfade settings for seamless looping */
@@ -56,6 +58,8 @@ export interface SlotMetadata {
   loop?: LoopSettings;
   /** LOFI mode (omitted or 'off' = normal) */
   lofi?: LofiMode | boolean;
+  /** Auto-detected musical note (omitted if no clear pitch) */
+  detectedNote?: string;
 }
 
 /** Export options presented to the user */

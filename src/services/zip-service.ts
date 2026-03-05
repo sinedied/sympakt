@@ -18,6 +18,7 @@ import {
   generateWaveformData,
   getMonoPCM,
   applyCrossfade,
+  detectPitch,
 } from './audio-engine.js';
 import { encodeWav } from './wav-encoder.js';
 
@@ -36,7 +37,8 @@ export async function exportSamplePack(
     if (!sample) continue;
 
     const slotNumber = String(i + 1).padStart(2, '0');
-    const exportName = `${slotNumber}_${sanitizeFilename(sample.name)}.wav`;
+    const noteSuffix = sample.detectedNote ? `_${sample.detectedNote}` : '';
+    const exportName = `${slotNumber}_${sanitizeFilename(sample.name)}${noteSuffix}.wav`;
 
     // Resample to export format (48kHz mono), with speed factor for LOFI/XLOFI
     const speedFactor = getLofiSpeedFactor(sample.lofi);
@@ -81,6 +83,7 @@ export async function exportSamplePack(
       isTruncated: sample.isTruncated,
       loop: sample.loop ?? undefined,
       lofi: isLofiActive(sample.lofi) ? sample.lofi : undefined,
+      detectedNote: sample.detectedNote ?? undefined,
     };
 
     // Optionally include original files
@@ -218,6 +221,7 @@ export async function importSamplePack(
         originalFile,
         loop: slotMeta?.loop ?? null,
         lofi: lofiMode,
+        detectedNote: slotMeta?.detectedNote ?? detectPitch(resampled),
       };
 
       slots[targetSlot] = sample;
@@ -256,6 +260,7 @@ export async function processAudioFile(file: File): Promise<Sample> {
     originalFile,
     loop: null,
     lofi: 'off',
+    detectedNote: detectPitch(resampled),
   };
 }
 

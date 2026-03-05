@@ -22,6 +22,7 @@ interface StoredSample {
   originalFile: Uint8Array;
   loop: LoopSettings | null;
   lofi: LofiMode | boolean;
+  detectedNote: string | null;
 }
 
 /** Settings persisted across sessions */
@@ -68,6 +69,7 @@ function serializeSample(sample: Sample): StoredSample {
     originalFile: sample.originalFile,
     loop: sample.loop,
     lofi: sample.lofi,
+    detectedNote: sample.detectedNote,
   };
 }
 
@@ -91,6 +93,7 @@ function deserializeSample(stored: StoredSample): Sample {
     originalFile: stored.originalFile,
     loop: stored.loop,
     lofi: normalizeLofiMode(stored.lofi),
+    detectedNote: stored.detectedNote ?? null,
   };
 }
 

@@ -27,6 +27,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Auto-conversion** — imported samples are resampled to 16-bit, 48 kHz, mono (Syntakt format)
 - **5-second truncation** — samples exceeding max duration are truncated with visual warning
 - **LOFI / XLOFI mode** — extends max sample time to 10s (LOFI, 2× speed) or 20s (XLOFI, 4× speed) by exporting pitched up; preview simulates the bandwidth reduction with a lowpass filter
+- **Auto pitch detection** — detects the fundamental frequency of each sample and displays the musical note (e.g. C3, A#4); detected notes are included in exported filenames and metadata
 - **Original file preservation** — optionally include source files in the exported archive
 - **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
@@ -83,7 +84,7 @@ Exported `.zip` files contain:
 
 | Path | Description |
 |------|-------------|
-| `01_kick.wav` … `64_pad.wav` | 16-bit, 48 kHz, mono WAV files |
+| `01_kick_C3.wav` … `64_pad.wav` | 16-bit, 48 kHz, mono WAV files (note appended to name if detected) |
 | `sympakt.json` | Pack name, slot mappings, durations, loop settings, original filenames, , if "Include originals" is checked |
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 

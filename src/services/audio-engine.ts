@@ -239,6 +239,215 @@ export function findNearestZeroCrossing(
   return Math.max(0, Math.min(bestSample / sampleRate, buffer.duration));
 }
 
+// ── Pitch detection ──────────────────────────────────────
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+/**
+ * Map a frequency (Hz) to its nearest musical note string (e.g. "C3", "A#4").
+ * Returns null if frequency is out of audible/musical range.
+ */
+export function frequencyToNote(freq: number): string | null {
+  if (freq <= 0 || !isFinite(freq)) return null;
+  // MIDI note number: 69 = A4 = 440 Hz
+  const midi = 12 * Math.log2(freq / 440) + 69;
+  const rounded = Math.round(midi);
+  if (rounded < 12 || rounded > 127) return null;
+  const noteName = NOTE_NAMES[rounded % 12];
+  const octave = Math.floor(rounded / 12) - 1;
+  return `${noteName}${octave}`;
+}
+
+/**
+ * Detect the fundamental frequency of an AudioBuffer using a downsampled
+ * McLeod Pitch Method analysis.
+ * Returns the detected note string (e.g. "C3") or null if no clear pitch.
+ */
+export function detectPitch(buffer: AudioBuffer): string | null {
+  const pcm = buffer.getChannelData(0);
+  const sourceRate = buffer.sampleRate;
+
+  // Keep analysis short for performance (major import-time win)
+  const analysisDuration = 1.2;
+  const maxSamples = Math.min(pcm.length, Math.round(sourceRate * analysisDuration));
+  if (maxSamples < 512) return null;
+
+  // Basic level gate
+  let rms = 0;
+  for (let i = 0; i < maxSamples; i++) rms += pcm[i] * pcm[i];
+  rms = Math.sqrt(rms / maxSamples);
+  if (rms < 0.01) return null;
+
+  // Skip attack transient
+  const skipSamples = Math.min(maxSamples - 1, Math.round(sourceRate * 0.04));
+  if (maxSamples - skipSamples < 512) return null;
+
+  // Downsample to ~12 kHz for much cheaper autocorrelation
+  const targetRate = 12_000;
+  const downsampleFactor = Math.max(1, Math.floor(sourceRate / targetRate));
+  const analysisRate = sourceRate / downsampleFactor;
+  const analysisPcm = downsampleMono(pcm.subarray(skipSamples, maxSamples), downsampleFactor);
+
+  const windowSize = Math.min(analysisPcm.length, Math.round(analysisRate * 0.06)); // 60 ms
+  if (windowSize < 256) return null;
+
+  const maxWindows = 6;
+  const stride = Math.max(1, Math.floor((analysisPcm.length - windowSize * 2) / maxWindows));
+  const detections: Array<{ freq: number; clarity: number }> = [];
+
+  for (let offset = 0; offset + windowSize * 2 <= analysisPcm.length; offset += stride) {
+    // Noise/percussive rejection: very high ZCR usually indicates unpitched content
+    const zcr = computeZeroCrossingRate(analysisPcm, offset, windowSize);
+    if (zcr > 0.22) continue;
+
+    const detection = mpmDetectWindow(analysisPcm, offset, windowSize, analysisRate);
+    if (detection) detections.push(detection);
+    if (detections.length >= maxWindows) break;
+  }
+
+  // Need consistent windows
+  if (detections.length < 2) return null;
+
+  const freqs = detections.map((d) => d.freq).sort((a, b) => a - b);
+  const q1 = freqs[Math.floor(freqs.length * 0.25)];
+  const q3 = freqs[Math.floor(freqs.length * 0.75)];
+  if (q3 / q1 > 1.12) return null;
+
+  const avgClarity = detections.reduce((sum, d) => sum + d.clarity, 0) / detections.length;
+  if (avgClarity < 0.78) return null;
+
+  const medianFreq = freqs[Math.floor(freqs.length / 2)];
+  return frequencyToNote(medianFreq);
+}
+
+/**
+ * Downsample by simple box averaging (good enough for pitch analysis).
+ */
+function downsampleMono(input: Float32Array, factor: number): Float32Array {
+  if (factor <= 1) return input;
+  const outLength = Math.floor(input.length / factor);
+  const out = new Float32Array(outLength);
+  for (let i = 0; i < outLength; i++) {
+    let sum = 0;
+    const start = i * factor;
+    for (let j = 0; j < factor; j++) sum += input[start + j];
+    out[i] = sum / factor;
+  }
+  return out;
+}
+
+/**
+ * Compute zero-crossing rate for a window.
+ */
+function computeZeroCrossingRate(
+  pcm: Float32Array,
+  offset: number,
+  windowSize: number,
+): number {
+  let crossings = 0;
+  for (let i = offset + 1; i < offset + windowSize; i++) {
+    const a = pcm[i - 1];
+    const b = pcm[i];
+    if ((a >= 0 && b < 0) || (a < 0 && b >= 0)) crossings++;
+  }
+  return crossings / (windowSize - 1);
+}
+
+/**
+ * McLeod Pitch Method (MPM) on a single window.
+ * Returns frequency + clarity, or null if no reliable pitch.
+ */
+function mpmDetectWindow(
+  pcm: Float32Array,
+  offset: number,
+  windowSize: number,
+  sampleRate: number,
+): { freq: number; clarity: number } | null {
+  // Restrict to realistic pack content range to avoid high-octave false positives.
+  const minHz = 55;   // A1
+  const maxHz = 1100; // C6-ish ceiling
+
+  const minPeriod = Math.max(2, Math.floor(sampleRate / maxHz));
+  const maxPeriod = Math.min(windowSize - 1, Math.floor(sampleRate / minHz));
+
+  if (minPeriod >= maxPeriod) return null;
+
+  const nsdf = new Float32Array(maxPeriod + 1);
+  for (let tau = minPeriod; tau <= maxPeriod; tau++) {
+    let d = 0;
+    let m = 0;
+    const len = windowSize - tau;
+    for (let i = 0; i < len; i++) {
+      const a = pcm[offset + i];
+      const b = pcm[offset + i + tau];
+      d += (a - b) * (a - b);
+      m += a * a + b * b;
+    }
+    nsdf[tau] = m > 0 ? 1 - d / m : 0;
+  }
+
+  interface Peak { tau: number; value: number }
+  const peaks: Peak[] = [];
+  let wasNegative = true;
+  let localMax = -Infinity;
+  let localMaxTau = minPeriod;
+
+  for (let tau = minPeriod; tau <= maxPeriod; tau++) {
+    if (nsdf[tau] < 0) {
+      if (!wasNegative && localMax > 0) {
+        peaks.push({ tau: localMaxTau, value: localMax });
+      }
+      wasNegative = true;
+      localMax = -Infinity;
+    } else {
+      wasNegative = false;
+      if (nsdf[tau] > localMax) {
+        localMax = nsdf[tau];
+        localMaxTau = tau;
+      }
+    }
+  }
+  if (!wasNegative && localMax > 0) {
+    peaks.push({ tau: localMaxTau, value: localMax });
+  }
+
+  if (peaks.length === 0) return null;
+
+  let globalMax = 0;
+  for (const p of peaks) {
+    if (p.value > globalMax) globalMax = p.value;
+  }
+
+  if (globalMax < 0.75) return null;
+
+  // Select the largest-period peak among near-max peaks.
+  // This biases toward the true fundamental instead of upper harmonics.
+  const threshold = globalMax * 0.9;
+  let bestPeak: Peak | null = null;
+  for (const p of peaks) {
+    if (p.value >= threshold) {
+      bestPeak = p;
+    }
+  }
+
+  if (!bestPeak) return null;
+
+  const tau = bestPeak.tau;
+  if (tau > minPeriod && tau < maxPeriod) {
+    const y0 = nsdf[tau - 1];
+    const y1 = nsdf[tau];
+    const y2 = nsdf[tau + 1];
+    const denom = 2 * (2 * y1 - y0 - y2);
+    if (Math.abs(denom) > 1e-12) {
+      const shift = (y0 - y2) / denom;
+      const refinedPeriod = tau + Math.max(-1, Math.min(1, shift));
+      return { freq: sampleRate / refinedPeriod, clarity: bestPeak.value };
+    }
+  }
+
+  return { freq: sampleRate / tau, clarity: bestPeak.value };
+}
+
 /**
  * Apply a linear crossfade to a looped region of PCM data.
  * Blends the tail of the loop with audio from BEFORE the loop start point.
