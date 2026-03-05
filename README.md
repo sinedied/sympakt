@@ -37,6 +37,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
 - **Single-file that works offline** — App is only one self-contained HTML file, fully usable offline
 - **Session persistence** — your current bank, samples, and export options are automatically saved to IndexedDB and restored when you reopen the page
+- **Virtual keyboard** — toggle a 2-octave piano keyboard (press **P** or click the keyboard icon) to audition selected samples at different pitches with full rendering (loop, crossfade, LOFI); use arrow keys to navigate samples and shift octaves, plus QWERTY shortcuts for quick playing
 
 ## Getting Started
 
@@ -74,6 +75,7 @@ The build outputs a single `index.html` in `dist/` with all JS, CSS, fonts, and 
 6. **Remove** — click the × button to clear a slot (requires confirmation)
 7. **Import a pack** — click **Import .zip** to load a previously exported sample pack
 8. **Export** — click **Export .zip**, set a pack name, toggle normalization, and optionally include original files
+9. **Virtual keyboard** — press **P** or click the keyboard icon to show a 2-octave piano; click a sample slot to select it, then play it chromatically using the on-screen keys or QWERTY shortcuts (A–J for white keys, W/E/T/Y/U for sharps). Use **←/→** to shift the octave range and **↑/↓** to switch between samples
 
 ### Import from ZIP
 

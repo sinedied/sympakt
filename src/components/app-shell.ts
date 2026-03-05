@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { iconHeart, iconGear } from '../icons.js';
+import { iconHeart, iconGear, iconKeyboard } from '../icons.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import {
   exportSamplePack,
@@ -14,6 +14,7 @@ import { detectPitchWithDebug } from '../services/audio-engine.js';
 import './sample-bank.js';
 import './export-dialog.js';
 import './settings-dialog.js';
+import './virtual-keyboard.js';
 
 /**
  * Main application shell.
@@ -187,11 +188,18 @@ export class AppShell extends LitElement {
         display: none;
       }
 
-      .btn-settings {
+      .btn-settings,
+      .btn-keyboard {
         padding: 4px 6px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+      }
+
+      .btn-keyboard.active {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+        color: #000;
       }
     `,
   ];
@@ -209,6 +217,7 @@ export class AppShell extends LitElement {
   @state() private pitchDebugMode = false;
   @state() private settingsDialogOpen = false;
   @state() private pitchDetectionEnabled = false;
+  @state() private keyboardOpen = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -263,6 +272,7 @@ export class AppShell extends LitElement {
           <span class="slot-count" title="Filled slots out of 64">${filledSlots}/64</span>
           ${this.pitchDebugMode ? html`<span class="debug-badge" title="Pitch debug mode enabled">DBG</span>` : nothing}
           <button class="btn-settings" @click=${this.onOpenSettings} title="Settings">${iconGear}</button>
+          <button class="btn-keyboard ${this.keyboardOpen ? 'active' : ''}" @click=${this.onToggleKeyboard} title="Virtual keyboard (P)">${iconKeyboard}</button>
           <button
             class=${this.headerDragOver ? 'import-highlight' : ''}
             @click=${this.onImportZip}
@@ -286,8 +296,10 @@ export class AppShell extends LitElement {
       </header>
 
       <main>
-        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled}></sp-sample-bank>
+        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled} .keyboardOpen=${this.keyboardOpen}></sp-sample-bank>
       </main>
+
+      ${this.keyboardOpen ? html`<sp-virtual-keyboard></sp-virtual-keyboard>` : nothing}
 
       <footer>
         <span>
@@ -433,6 +445,10 @@ export class AppShell extends LitElement {
     this.settingsDialogOpen = true;
   }
 
+  private onToggleKeyboard(): void {
+    this.keyboardOpen = !this.keyboardOpen;
+  }
+
   private async onPitchDetectionToggle(e: CustomEvent<{ enabled: boolean }>): Promise<void> {
     this.pitchDetectionEnabled = e.detail.enabled;
     this.persistSettings();
@@ -473,6 +489,18 @@ export class AppShell extends LitElement {
       e.preventDefault();
       this.pitchDebugMode = !this.pitchDebugMode;
       this.showNotification(`Pitch debug ${this.pitchDebugMode ? 'ON' : 'OFF'}`);
+      return;
+    }
+
+    // P key (no modifiers, not in input) toggles virtual keyboard
+    if (
+      !e.metaKey && !e.ctrlKey && !e.altKey &&
+      e.key.toLowerCase() === 'p' &&
+      !(e.target instanceof HTMLInputElement) &&
+      !(e.target instanceof HTMLTextAreaElement)
+    ) {
+      e.preventDefault();
+      this.onToggleKeyboard();
     }
   }
 

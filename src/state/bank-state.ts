@@ -13,6 +13,24 @@ class BankStateStore {
   private slots: (Sample | null)[] = new Array(MAX_SLOTS).fill(null);
   private listeners = new Set<BankListener>();
   private saveTimer?: ReturnType<typeof setTimeout>;
+  private _selectedIndex: number | null = null;
+
+  /** Get the currently selected slot index */
+  get selectedIndex(): number | null {
+    return this._selectedIndex;
+  }
+
+  /** Select a slot (null to deselect) */
+  selectSlot(index: number | null): void {
+    this._selectedIndex = index;
+    this.notifyOnly();
+  }
+
+  /** Get the currently selected sample */
+  getSelectedSample(): Sample | null {
+    if (this._selectedIndex === null) return null;
+    return this.slots[this._selectedIndex] ?? null;
+  }
 
   /** Get a snapshot of all slots */
   getSlots(): ReadonlyArray<Sample | null> {

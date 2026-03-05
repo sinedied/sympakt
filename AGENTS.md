@@ -20,6 +20,7 @@ src/
 │   ├── sample-bank.ts      # 64-slot scrollable bank with drag & drop
 │   ├── sample-slot.ts      # Individual sample slot
 │   ├── waveform-view.ts    # Pixelated waveform preview canvas
+│   ├── virtual-keyboard.ts # 2-octave chromatic keyboard for sample auditioning
 │   └── export-dialog.ts    # Export options dialog
 ├── services/
 │   ├── audio-engine.ts     # Web Audio API: decode, resample, preview, analyze
@@ -154,7 +155,7 @@ npm run preview
 
 - All UI icons are inline SVGs defined in `src/icons.ts` using Lit `svg` tagged templates
 - Icons use `currentColor` for fill/stroke so they inherit the button's text color
-- Available icons: `iconPlay`, `iconStop`, `iconLoop`, `iconCheck`, `iconClose`, `iconPlus`, `iconHeart`, `iconGear`
+- Available icons: `iconPlay`, `iconStop`, `iconLoop`, `iconCheck`, `iconClose`, `iconPlus`, `iconHeart`, `iconGear`, `iconKeyboard`
 - The heart icon uses pixel-art rendering (`shape-rendering="crispEdges"`) to match the pixel font aesthetic
 - When adding new icons, follow the same pattern: export a `const` from `icons.ts`
 
@@ -180,6 +181,22 @@ npm run preview
 - All file I/O happens via browser File API and drag-and-drop — no server calls
 - No user data leaves the browser
 - ZIP extraction should validate filenames and sizes to avoid zip bombs
+
+## Virtual Keyboard
+
+- **Purpose**: allows users to audition a selected sample at different pitches using a 2-octave chromatic keyboard, without needing the Syntakt hardware.
+- **Toggle**: keyboard icon button in the header toolbar (right of the gear/settings button), or press **P** key. Toggles `<sp-virtual-keyboard>` above the footer.
+- **Component**: `src/components/virtual-keyboard.ts` (`<sp-virtual-keyboard>`)
+- **Selection**: clicking a sample slot dispatches `slot-select` event → `bankState.selectSlot(index)`. Selected slot gets a highlighted border (`.selected` class on `.slot`), but **only when the keyboard is open** (`sample-bank.keyboardOpen` property). Closing the keyboard automatically deselects.
+- **Root note**: C3 is always the root (semitone offset 0). The displayed range defaults to C3–B4 (2 octaves) and can be shifted.
+- **Octave shifting**: Left/Right arrow keys or ◀/▶ buttons shift the displayed 2-octave range (C0–B1 through C6–B7). Shifting stops all active notes.
+- **Sample navigation**: Up/Down arrow keys select the previous/next filled sample slot.
+- **Playback**: `playSamplePitchedFull(sample, semitones)` in `audio-engine.ts` renders the full sample including loop with crossfade, LOFI/XLOFI lowpass filter, and truncation to `getEffectiveMaxDuration(lofi)`. Uses `playbackRate = 2^(semitones/12)` for pitch shifting.
+- **QWERTY mapping**: middle row (A=C, S=D, D=E, F=F, G=G, H=A, J=B) for white keys, top row (W=C#, E=D#, T=F#, Y=G#, U=A#) for black keys. Shortcuts always map to the **first displayed octave** only. Keys in the second octave show no binding.
+- **Touch/pointer support**: keys respond to `pointerdown`/`pointerup`/`pointerleave` with pointer capture for reliable mobile interaction. `touch-action: none` prevents scroll interference.
+- **Visual feedback**: pressed keys get `.active` class (accent color for white keys, accent-dim for black keys).
+- **Responsive**: white key width scales from 42px (desktop) → 32px (≤768px) → 24px (≤480px). Black key width is computed as 67% of white key width. Key binding labels hidden on mobile.
+- **State**: `BankStateStore.selectedIndex` (not persisted) tracks which slot is selected. `BankStateStore.selectSlot()` / `getSelectedSample()` provide the API.
 
 ## Documentation Maintenance
 

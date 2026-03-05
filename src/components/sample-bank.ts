@@ -58,8 +58,10 @@ export class SampleBank extends LitElement {
   private bankCtrl = new BankStateController(this);
   @property({ type: Boolean }) pitchDebugMode = false;
   @property({ type: Boolean }) pitchDetectionEnabled = false;
+  @property({ type: Boolean }) keyboardOpen = false;
 
   override render() {
+    const selectedIndex = bankState.selectedIndex;
     return html`
       <div class="bank-list">
         ${this.bankCtrl.slots.map(
@@ -68,6 +70,7 @@ export class SampleBank extends LitElement {
               .index=${i}
               .sample=${sample}
               .pitchDebugMode=${this.pitchDebugMode}
+              .selected=${this.keyboardOpen && selectedIndex === i && sample !== null}
               @sample-import=${this.onSampleImport}
               @sample-import-batch=${this.onSampleImportBatch}
               @sample-remove=${this.onSampleRemove}
@@ -75,6 +78,7 @@ export class SampleBank extends LitElement {
               @loop-update=${this.onLoopUpdate}
               @lofi-toggle=${this.onLofiToggle}
               @note-change=${this.onNoteChange}
+              @slot-select=${this.onSlotSelect}
             ></sp-sample-slot>
           `,
         )}
@@ -125,6 +129,10 @@ export class SampleBank extends LitElement {
 
   private onNoteChange(e: CustomEvent<{ index: number; note: string | null }>): void {
     bankState.updateSampleNote(e.detail.index, e.detail.note);
+  }
+
+  private onSlotSelect(e: CustomEvent<{ index: number }>): void {
+    bankState.selectSlot(e.detail.index);
   }
 }
 

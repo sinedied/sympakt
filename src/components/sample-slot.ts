@@ -40,6 +40,11 @@ export class SampleSlot extends LitElement {
         border-color: var(--border-hover);
       }
 
+      .slot.selected {
+        border-color: var(--accent);
+        background: var(--accent-glow);
+      }
+
       .slot.drag-over {
         border-color: var(--accent);
         background: var(--accent-glow);
@@ -275,6 +280,7 @@ export class SampleSlot extends LitElement {
   @property({ type: Number }) index = 0;
   @property({ type: Object }) sample: Sample | null = null;
   @property({ type: Boolean }) pitchDebugMode = false;
+  @property({ type: Boolean }) selected = false;
 
   @state() private dragOver = false;
   @state() private dragging = false;
@@ -307,7 +313,7 @@ export class SampleSlot extends LitElement {
 
   override render() {
     const slotNum = String(this.index + 1).padStart(2, '0');
-    const cls = `slot${this.dragOver ? ' drag-over' : ''}${this.dragging ? ' dragging' : ''}`;
+    const cls = `slot${this.dragOver ? ' drag-over' : ''}${this.dragging ? ' dragging' : ''}${this.selected ? ' selected' : ''}`;
 
     return html`
       <div
@@ -318,6 +324,7 @@ export class SampleSlot extends LitElement {
         @dragover=${this.onDragOver}
         @dragleave=${this.onDragLeave}
         @drop=${this.onDrop}
+        @click=${this.onSlotClick}
       >
         <span class="slot-number">${slotNum}</span>
 
@@ -399,6 +406,18 @@ export class SampleSlot extends LitElement {
       this.fileInput = this.shadowRoot!.querySelector('input[type="file"]') as HTMLInputElement;
     }
     this.fileInput?.click();
+  }
+
+  private onSlotClick(): void {
+    if (this.sample) {
+      this.dispatchEvent(
+        new CustomEvent('slot-select', {
+          detail: { index: this.index },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
   }
 
   private onFileSelected(e: Event): void {

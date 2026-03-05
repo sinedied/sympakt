@@ -6,6 +6,7 @@ import {
   LofiMode,
   PitchDebugInfo,
   getLofiSpeedFactor,
+  getEffectiveMaxDuration,
   isLofiActive,
 } from '../types/index.js';
 
@@ -122,6 +123,137 @@ export function playSample(
       // already stopped
     }
   };
+}
+
+/**
+ * Play a sample pitched by a number of semitones relative to root.
+ * Uses playbackRate to shift pitch. Returns a stop function.
+ */
+export function playSamplePitched(
+  buffer: AudioBuffer,
+  semitones: number,
+  lofi: LofiMode = 'off',
+): () => void {
+  const ctx = getAudioContext();
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = Math.pow(2, semitones / 12);
+
+  if (isLofiActive(lofi)) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = getLofiCutoff(lofi);
+    source.connect(filter);
+    filter.connect(ctx.destination);
+  } else {
+    source.connect(ctx.destination);
+  }
+
+  source.start(0);
+
+  return () => {
+    try {
+      source.stop();
+    } catch {
+      // already stopped
+    }
+  };
+}
+
+/**
+ * Play a sample with full rendering (loop/crossfade, lofi, truncation)
+ * pitched by a number of semitones relative to root.
+ * Returns a stop function (sync — the async work is handled internally).
+ */
+export function playSamplePitchedFull(
+  sample: { audioBuffer: AudioBuffer; loop: LoopSettings | null; lofi: LofiMode; duration: number },
+  semitones: number,
+): () => void {
+  const rate = Math.pow(2, semitones / 12);
+  const lofi = sample.lofi;
+
+  if (sample.loop) {
+    // Build the crossfaded loop buffer synchronously, then play pitched
+    const ctx = getAudioContext();
+    const buffer = sample.audioBuffer;
+    const sampleRate = buffer.sampleRate;
+    const loop = sample.loop;
+
+    const loopStartSample = Math.round(loop.startTime * sampleRate);
+    const loopEndSample = Math.round(loop.endTime * sampleRate);
+    const loopLengthSamples = loopEndSample - loopStartSample;
+
+    if (loopLengthSamples <= 0) {
+      return playSamplePitched(buffer, semitones, lofi);
+    }
+
+    const loopPcm = new Float32Array(loopLengthSamples);
+    const srcData = buffer.getChannelData(0);
+    for (let i = 0; i < loopLengthSamples; i++) {
+      const idx = loopStartSample + i;
+      loopPcm[i] = idx < srcData.length ? srcData[idx] : 0;
+    }
+
+    const crossfadeSamples = Math.round(loop.crossfadeDuration * sampleRate);
+    if (crossfadeSamples > 0 && crossfadeSamples <= loopLengthSamples) {
+      for (let i = 0; i < crossfadeSamples; i++) {
+        const fadeOut = 1 - i / crossfadeSamples;
+        const fadeIn = i / crossfadeSamples;
+        const endIdx = loopLengthSamples - crossfadeSamples + i;
+        const preStartIdx = loopStartSample - crossfadeSamples + i;
+        const preStartVal = (preStartIdx >= 0 && preStartIdx < srcData.length)
+          ? srcData[preStartIdx]
+          : 0;
+        loopPcm[endIdx] = loopPcm[endIdx] * fadeOut + preStartVal * fadeIn;
+      }
+    }
+
+    const loopBuffer = ctx.createBuffer(1, loopLengthSamples, sampleRate);
+    loopBuffer.getChannelData(0).set(loopPcm);
+
+    const source = ctx.createBufferSource();
+    source.buffer = loopBuffer;
+    source.loop = true;
+    source.playbackRate.value = rate;
+
+    if (isLofiActive(lofi)) {
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = getLofiCutoff(lofi);
+      source.connect(filter);
+      filter.connect(ctx.destination);
+    } else {
+      source.connect(ctx.destination);
+    }
+
+    source.start();
+    return () => { try { source.stop(); } catch { /* already stopped */ } };
+  }
+
+  // Non-looped: play with truncation and lofi
+  const ctx = getAudioContext();
+  const source = ctx.createBufferSource();
+  source.buffer = sample.audioBuffer;
+  source.playbackRate.value = rate;
+
+  const effectiveMax = getEffectiveMaxDuration(lofi);
+  const playDuration = Math.min(sample.duration, effectiveMax);
+
+  if (isLofiActive(lofi)) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = getLofiCutoff(lofi);
+    source.connect(filter);
+    filter.connect(ctx.destination);
+  } else {
+    source.connect(ctx.destination);
+  }
+
+  // The duration parameter of start() is in the *source* time domain,
+  // so playbackRate stretches/compresses it automatically.
+  source.start(0, 0, playDuration);
+
+  return () => { try { source.stop(); } catch { /* already stopped */ } };
 }
 
 /**
