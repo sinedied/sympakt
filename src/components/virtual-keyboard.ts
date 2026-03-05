@@ -392,7 +392,8 @@ export class VirtualKeyboard extends LitElement {
   }
 
   private onKeyDown(e: KeyboardEvent): void {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    const origin = e.composedPath()[0];
+    if (origin instanceof HTMLInputElement || origin instanceof HTMLTextAreaElement) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
     const key = e.key.toLowerCase();

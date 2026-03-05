@@ -478,7 +478,7 @@ export class SampleSlot extends LitElement {
 
         ${this.sample
           ? html`
-              <span class="sample-name-wrap">
+              <span class="sample-name-wrap" @click=${this.renamingTarget === 'main' ? undefined : this.toggleSampleMenu}>
                 ${this.renamingTarget === 'main'
                   ? html`<input class="rename-input" type="text"
                       .value=${this.sample.name}
@@ -486,7 +486,7 @@ export class SampleSlot extends LitElement {
                       @blur=${this.onRenameBlur}
                       @click=${(e: Event) => e.stopPropagation()}
                     />`
-                  : html`<span class="sample-name" title="Click for options" @click=${this.toggleSampleMenu}>${this.sample.name}</span>`}
+                  : html`<span class="sample-name" title="Click for options">${this.sample.name}</span>`}
                 ${this.sampleMenuOpen ? this.renderSampleMenu() : nothing}
               </span>
               ${this.sample.detectedNote
@@ -563,7 +563,7 @@ export class SampleSlot extends LitElement {
               @loop-change=${this.onLoopChange}
             ></sp-waveform>
           </div>
-          <span class="sample-name-wrap">
+          <span class="sample-name-wrap" @click=${this.renamingTarget === 'a' ? undefined : this.toggleSplitMenu}>
             ${this.renamingTarget === 'a'
               ? html`<input class="rename-input" type="text"
                   .value=${this.sample.name}
@@ -571,7 +571,7 @@ export class SampleSlot extends LitElement {
                   @blur=${this.onRenameBlurA}
                   @click=${(e: Event) => e.stopPropagation()}
                 />`
-              : html`<span class="sample-name" title=${this.sample.name} @click=${this.toggleSplitMenu}>${this.sample.name}</span>`}
+              : html`<span class="sample-name" title=${this.sample.name}>${this.sample.name}</span>`}
             ${this.splitMenuOpen ? this.renderSplitMenu('a') : nothing}
           </span>
           <span class="duration ${this.sample.isTruncated && !this.sample.loop ? 'truncated' : ''}">
@@ -613,7 +613,7 @@ export class SampleSlot extends LitElement {
                     @loop-change=${this.onLoopChangeB}
                   ></sp-waveform>
                 </div>
-                <span class="sample-name-wrap">
+                <span class="sample-name-wrap" @click=${this.renamingTarget === 'b' ? undefined : this.toggleSplitMenuB}>
                   ${this.renamingTarget === 'b'
                     ? html`<input class="rename-input" type="text"
                         .value=${splitB.name}
@@ -621,7 +621,7 @@ export class SampleSlot extends LitElement {
                         @blur=${this.onRenameBlurB}
                         @click=${(e: Event) => e.stopPropagation()}
                       />`
-                    : html`<span class="sample-name" title=${splitB.name} @click=${this.toggleSplitMenuB}>${splitB.name}</span>`}
+                    : html`<span class="sample-name" title=${splitB.name}>${splitB.name}</span>`}
                   ${this.splitMenuOpenB ? this.renderSplitMenu('b') : nothing}
                 </span>
                 <span class="duration ${splitB.isTruncated && !splitB.loop ? 'truncated' : ''}">

@@ -493,11 +493,12 @@ export class AppShell extends LitElement {
     }
 
     // P key (no modifiers, not in input) toggles virtual keyboard
+    const origin = e.composedPath()[0];
     if (
       !e.metaKey && !e.ctrlKey && !e.altKey &&
       e.key.toLowerCase() === 'p' &&
-      !(e.target instanceof HTMLInputElement) &&
-      !(e.target instanceof HTMLTextAreaElement)
+      !(origin instanceof HTMLInputElement) &&
+      !(origin instanceof HTMLTextAreaElement)
     ) {
       e.preventDefault();
       this.onToggleKeyboard();
