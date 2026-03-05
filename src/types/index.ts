@@ -80,6 +80,7 @@ export interface SlotMetadata {
 export interface ExportOptions {
   packName: string;
   includeOriginals: boolean;
+  normalizeOnExport: boolean;
 }
 
 /** All musical notes from C0 to B7 for the note picker dropdown */

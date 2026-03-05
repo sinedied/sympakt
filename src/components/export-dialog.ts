@@ -107,6 +107,7 @@ export class ExportDialog extends LitElement {
   @property({ type: Number }) sampleCount = 0;
   @property({ type: String }) packName = 'My Sample Pack';
   @property({ type: Boolean }) includeOriginals = false;
+  @property({ type: Boolean }) normalizeOnExport = true;
 
   override render() {
     if (!this.open) return null;
@@ -128,6 +129,19 @@ export class ExportDialog extends LitElement {
               title="Name used for the exported .zip file"
             />
           </div>
+
+          <div class="checkbox-field">
+            <input
+              id="normalize"
+              type="checkbox"
+              .checked=${this.normalizeOnExport}
+              @change=${(e: Event) =>
+                (this.normalizeOnExport = (e.target as HTMLInputElement).checked)}
+              title="Normalize audio levels to maximize volume without clipping"
+            />
+            <label for="normalize" title="Normalize audio levels to maximize volume without clipping">Normalize samples</label>
+          </div>
+          <div class="field-hint">Maximize volume without clipping</div>
 
           <div class="checkbox-field">
             <input
@@ -166,6 +180,7 @@ export class ExportDialog extends LitElement {
         detail: {
           packName: this.packName.trim() || 'Untitled Pack',
           includeOriginals: this.includeOriginals,
+          normalizeOnExport: this.normalizeOnExport,
         },
         bubbles: true,
         composed: true,

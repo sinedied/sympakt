@@ -70,6 +70,21 @@ export async function exportSamplePack(
       }
     }
 
+    // Normalize PCM to maximize volume without clipping
+    if (options.normalizeOnExport) {
+      let peak = 0;
+      for (let j = 0; j < pcm.length; j++) {
+        const abs = Math.abs(pcm[j]);
+        if (abs > peak) peak = abs;
+      }
+      if (peak > 0 && peak < 1) {
+        const gain = 1 / peak;
+        for (let j = 0; j < pcm.length; j++) {
+          pcm[j] *= gain;
+        }
+      }
+    }
+
     const wavData = encodeWav(pcm);
     files[exportName] = new Uint8Array(wavData);
 

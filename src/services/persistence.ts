@@ -30,6 +30,7 @@ export interface StoredSettings {
   packName?: string;
   includeOriginals?: boolean;
   pitchDetectionEnabled?: boolean;
+  normalizeOnExport?: boolean;
 }
 
 function openDB(): Promise<IDBDatabase> {

@@ -203,6 +203,7 @@ export class AppShell extends LitElement {
   @state() private exporting = false;
   @state() private importing = false;
   @state() private exportIncludeOriginals = false;
+  @state() private exportNormalize = true;
   @state() private exportPackName = 'My Sample Pack';
   @state() private headerDragOver = false;
   @state() private pitchDebugMode = false;
@@ -233,6 +234,7 @@ export class AppShell extends LitElement {
       if (settings) {
         if (settings.packName !== undefined) this.exportPackName = settings.packName;
         if (settings.includeOriginals !== undefined) this.exportIncludeOriginals = settings.includeOriginals;
+        if (settings.normalizeOnExport !== undefined) this.exportNormalize = settings.normalizeOnExport;
         if (settings.pitchDetectionEnabled !== undefined) this.pitchDetectionEnabled = settings.pitchDetectionEnabled;
       }
       if (restored) {
@@ -300,6 +302,7 @@ export class AppShell extends LitElement {
         .sampleCount=${filledSlots}
         .packName=${this.exportPackName}
         .includeOriginals=${this.exportIncludeOriginals}
+        .normalizeOnExport=${this.exportNormalize}
         @dialog-close=${() => (this.exportDialogOpen = false)}
         @export-confirm=${this.onExportConfirm}
       ></sp-export-dialog>
@@ -401,6 +404,7 @@ export class AppShell extends LitElement {
     this.exporting = true;
     try {
       this.exportIncludeOriginals = e.detail.includeOriginals;
+      this.exportNormalize = e.detail.normalizeOnExport;
       this.exportPackName = e.detail.packName.trim() || 'Untitled Pack';
       this.persistExportOptions();
       const blob = await exportSamplePack(this.bankCtrl.slots, e.detail);
@@ -420,6 +424,7 @@ export class AppShell extends LitElement {
       bankState.clearAll();
       this.exportPackName = 'My Sample Pack';
       this.exportIncludeOriginals = false;
+      this.exportNormalize = true;
       this.showNotification('All slots cleared');
     }
   }
@@ -479,6 +484,7 @@ export class AppShell extends LitElement {
     saveSettings({
       packName: this.exportPackName,
       includeOriginals: this.exportIncludeOriginals,
+      normalizeOnExport: this.exportNormalize,
       pitchDetectionEnabled: this.pitchDetectionEnabled,
     }).catch((err) => console.warn('Failed to persist settings:', err));
   }

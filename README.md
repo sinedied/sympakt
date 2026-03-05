@@ -32,6 +32,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Global settings** — gear button in the header opens a settings dialog; settings are persisted across sessions
 - **Hidden pitch debug mode** — press Cmd/Ctrl + Alt + D (Shift optional) to toggle per-slot pitch diagnostics (confidence, ZCR, and rejection reason)
 - **Original file preservation** — optionally include source files in the exported archive
+- **Normalize on export** — automatically maximizes sample volume without clipping (enabled by default)
 - **Metadata JSON** — each pack includes a `sympakt.json` with slot mappings, loop settings, and sample info
 - **Zero backend** — everything runs client-side, no data ever leaves your browser
 - **Single-file that works offline** — App is only one self-contained HTML file, fully usable offline
@@ -72,7 +73,7 @@ The build outputs a single `index.html` in `dist/` with all JS, CSS, fonts, and 
 5. **LOFI / XLOFI** — click **LO** to cycle through LOFI modes: off → LOFI (10s max, 2× speed) → XLOFI (20s max, 4× speed). On the Syntakt, pitch the sample down one octave (LOFI) or two octaves (XLOFI) to hear the original sound.
 6. **Remove** — click the × button to clear a slot (requires confirmation)
 7. **Import a pack** — click **Import .zip** to load a previously exported sample pack
-8. **Export** — click **Export .zip**, set a pack name, and optionally include original files
+8. **Export** — click **Export .zip**, set a pack name, toggle normalization, and optionally include original files
 
 ### Import from ZIP
 
@@ -92,4 +93,4 @@ Exported `.zip` files contain:
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 
 > [!NOTE]
-> Non-looped samples longer than 5 seconds are automatically truncated on export (10 seconds in LOFI mode, 20 seconds in XLOFI mode). Looped samples export only the selected loop region with crossfade applied. LOFI samples are exported at 2× speed (pitch down one octave on Syntakt), XLOFI at 4× speed (pitch down two octaves).
+> Non-looped samples longer than 5 seconds are automatically truncated on export (10 seconds in LOFI mode, 20 seconds in XLOFI mode). Looped samples export only the selected loop region with crossfade applied. LOFI samples are exported at 2× speed (pitch down one octave on Syntakt), XLOFI at 4× speed (pitch down two octaves). Samples are normalized to peak volume by default.

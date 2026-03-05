@@ -56,6 +56,7 @@ src/
 - **Single-file build** — production build outputs a single self-contained `index.html` (all JS, CSS, fonts, and favicon inlined)
 - **Minimal dependencies** — prefer browser APIs over libraries
 - **Export format**: 16-bit, 48kHz, mono WAV (Syntakt requirement)
+- **Normalization**: peak normalization applied per-sample on export (enabled by default, can be toggled in export dialog)
 - **Max sample length**: looped samples export only the loop region; non-looped samples are truncated to 5 seconds (10 seconds in LOFI mode)
 - **Max loop duration**: 5 seconds (10 seconds in LOFI mode)
 - **Bank size**: exactly 64 slots
@@ -169,7 +170,7 @@ npm run preview
 - **Storage**: IndexedDB database `sympakt-db` with two object stores: `samples` (keyed by slot index) and `settings` (keyed by name)
 - **Auto-save**: bank state is debounced-saved (500ms) on every change via `bankState.notify()`
 - **AudioBuffer serialization**: channel data stored as `Float32Array[]` with `sampleRate`, `numberOfChannels`, and `length` metadata; waveform data is regenerated on restore via `generateWaveformData()`
-- **Export options persistence**: pack name, "include originals" flag, and pitch detection toggle saved to the `settings` store when changed and restored on load
+- **Export options persistence**: pack name, "include originals" flag, normalize toggle, and pitch detection toggle saved to the `settings` store when changed and restored on load
 - **Restore**: `bankState.restoreFromDB()` + `loadSettings()` called in `AppShell.connectedCallback()`; restoring skips triggering a save cycle
 - **Clear**: `bankState.clearAll()` clears both in-memory slots and all IndexedDB data; export options are also reset to defaults
 - **Graceful degradation**: all persistence operations use try/catch; failures are logged but do not block the UI
