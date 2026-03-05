@@ -28,6 +28,7 @@ export class AppShell extends LitElement {
         display: flex;
         flex-direction: column;
         height: 100vh;
+        height: 100dvh;
         background: var(--bg-primary);
         color: var(--text-primary);
       }
@@ -130,7 +131,8 @@ export class AppShell extends LitElement {
       .notification {
         position: fixed;
         top: 16px;
-        right: 16px;
+        left: 50%;
+        transform: translateX(-50%);
         background: var(--bg-secondary);
         border: 1px solid var(--accent);
         padding: 10px 16px;
@@ -139,6 +141,7 @@ export class AppShell extends LitElement {
         color: var(--accent);
         z-index: 2000;
         animation: fadeIn 200ms ease;
+        white-space: nowrap;
       }
 
       .notification.error {
@@ -149,11 +152,11 @@ export class AppShell extends LitElement {
       @keyframes fadeIn {
         from {
           opacity: 0;
-          transform: translateY(-8px);
+          transform: translateX(-50%) translateY(-8px);
         }
         to {
           opacity: 1;
-          transform: translateY(0);
+          transform: translateX(-50%) translateY(0);
         }
       }
 

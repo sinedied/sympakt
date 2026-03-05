@@ -10,8 +10,8 @@ export const theme = css`
     --border-color: #333333;
     --border-hover: #555555;
     --text-primary: #e0e0e0;
-    --text-secondary: #888888;
-    --text-muted: #555555;
+    --text-secondary: #999999;
+    --text-muted: #777777;
     --accent: #00ccaa;
     --accent-dim: #009977;
     --accent-glow: rgba(0, 204, 170, 0.15);

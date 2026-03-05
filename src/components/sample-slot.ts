@@ -284,12 +284,25 @@ export class SampleSlot extends LitElement {
   @state() private pitchSubmenuOpen = false;
   private stopFn?: () => void;
   private outsideClickHandler = this.onOutsideClick.bind(this);
+  private stopAllHandler = this.onStopAll.bind(this);
 
   private fileInput?: HTMLInputElement;
 
+  override connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('stop-all-playback', this.stopAllHandler);
+  }
+
   override disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener('stop-all-playback', this.stopAllHandler);
     document.removeEventListener('click', this.outsideClickHandler);
+  }
+
+  private onStopAll(): void {
+    if (this.playing) {
+      this.stopPlayback();
+    }
   }
 
   override render() {
@@ -601,6 +614,10 @@ export class SampleSlot extends LitElement {
 
   private startPlayback(): void {
     if (!this.sample) return;
+
+    // Stop any other playing sample
+    window.dispatchEvent(new Event('stop-all-playback'));
+
     this.playing = true;
     const lofi = this.sample.lofi;
 
