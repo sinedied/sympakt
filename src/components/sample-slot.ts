@@ -113,7 +113,10 @@ export class SampleSlot extends LitElement {
       }
 
       .sample-menu .menu-item {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         width: 100%;
         text-align: left;
         padding: 4px 8px;
@@ -449,7 +452,7 @@ export class SampleSlot extends LitElement {
           @mouseenter=${() => { this.pitchSubmenuOpen = true; }}
           @mouseleave=${() => { this.pitchSubmenuOpen = false; }}
         >
-          Set pitch ▸
+          Set pitch <svg width="6" height="8" viewBox="0 0 6 8" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,1 5,4 1,7"/></svg>
           ${this.pitchSubmenuOpen ? this.renderPitchSubmenu() : nothing}
         </div>
       </div>
