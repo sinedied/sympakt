@@ -226,20 +226,24 @@ export async function importSamplePack(
       const waveformData = generateWaveformData(resampled);
 
       const lofiMode = normalizeLofiMode(slotMeta?.lofi);
-      const pitchResult = slotMeta?.detectedNote
+      // When metadata is present, always use stored pitch and skip detection
+      // to avoid overriding user-set values (including explicit "None")
+      const pitchResult = metadata
         ? {
-            note: slotMeta.detectedNote,
-            debug: {
-              detectedFrequency: null,
-              detectedNote: slotMeta.detectedNote,
-              detections: 0,
-              avgClarity: 0,
-              avgZcr: 0,
-              spreadRatio: null,
-              rejectedReason: 'from-metadata',
-              analysisRate: resampled.sampleRate,
-              downsampleFactor: 1,
-            },
+            note: slotMeta?.detectedNote ?? null,
+            debug: slotMeta?.detectedNote
+              ? {
+                  detectedFrequency: null,
+                  detectedNote: slotMeta.detectedNote,
+                  detections: 0,
+                  avgClarity: 0,
+                  avgZcr: 0,
+                  spreadRatio: null,
+                  rejectedReason: 'from-metadata',
+                  analysisRate: resampled.sampleRate,
+                  downsampleFactor: 1,
+                }
+              : undefined,
           }
         : enablePitchDetection
           ? detectPitchWithDebug(resampled)
