@@ -74,6 +74,36 @@ export class SettingsDialog extends LitElement {
         letter-spacing: 1px;
       }
 
+      .radio-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .col-buttons {
+        display: flex;
+        gap: 4px;
+        margin-left: auto;
+      }
+
+      .col-buttons button {
+        min-width: 0;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+      }
+
+      .col-buttons button.active {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+        color: #000;
+      }
+
       .experimental-badge {
         font-family: var(--font-pixel);
         font-size: 5px;
@@ -96,6 +126,7 @@ export class SettingsDialog extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: Boolean }) pitchDetectionEnabled = false;
+  @property({ type: Number }) maxColumns = 4;
 
   override render() {
     if (!this.open) return null;
@@ -104,6 +135,16 @@ export class SettingsDialog extends LitElement {
       <div class="overlay" @click=${this.onOverlayClick}>
         <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
           <h2>Settings</h2>
+
+          <div class="checkbox-field radio-field">
+            <label>Max columns</label>
+            <div class="col-buttons">
+              ${[1, 2, 3, 4].map(n => html`
+                <button class=${this.maxColumns === n ? 'active' : ''} @click=${() => this.setMaxColumns(n)}>${n}</button>
+              `)}
+            </div>
+          </div>
+          <div class="field-hint">Maximum number of columns (responsive)</div>
 
           <div class="checkbox-field">
             <input
@@ -147,6 +188,21 @@ export class SettingsDialog extends LitElement {
         composed: true,
       }),
     );
+  }
+
+  private onMaxColumnsChange(value: number): void {
+    this.maxColumns = value;
+    this.dispatchEvent(
+      new CustomEvent('max-columns-change', {
+        detail: { maxColumns: value },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private setMaxColumns(n: number): void {
+    this.onMaxColumnsChange(n);
   }
 }
 

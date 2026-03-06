@@ -183,6 +183,7 @@ export async function exportSamplePack(
       loop: sample.loop ?? undefined,
       lofi: isLofiActive(sample.lofi) ? sample.lofi : undefined,
       detectedNote: sample.detectedNote ?? undefined,
+      reversed: sample.reversed || undefined,
       splitEnabled: sample.splitEnabled || undefined,
     };
 
@@ -196,6 +197,7 @@ export async function exportSamplePack(
         isTruncated: sample.splitSample.isTruncated,
         loop: sample.splitSample.loop ?? undefined,
         detectedNote: sample.splitSample.detectedNote ?? undefined,
+        reversed: sample.splitSample.reversed || undefined,
       };
     }
 
@@ -367,6 +369,7 @@ export async function importSamplePack(
         lofi: lofiMode,
         detectedNote: pitchResult.note,
         pitchDebug: pitchResult.debug,
+        reversed: slotMeta?.reversed ?? false,
         splitEnabled: slotMeta?.splitEnabled ?? false,
       };
 
@@ -397,6 +400,7 @@ export async function importSamplePack(
               originalFile: bOriginalFile,
               loop: bMeta.loop ?? null,
               detectedNote: bMeta.detectedNote ?? null,
+              reversed: bMeta.reversed ?? false,
             };
           } catch {
             console.warn(`Skipping unreadable split B file for slot ${targetSlot + 1}`);

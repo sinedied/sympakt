@@ -218,6 +218,7 @@ export class AppShell extends LitElement {
   @state() private settingsDialogOpen = false;
   @state() private pitchDetectionEnabled = false;
   @state() private keyboardOpen = false;
+  @state() private maxColumns = 4;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -245,6 +246,7 @@ export class AppShell extends LitElement {
         if (settings.includeOriginals !== undefined) this.exportIncludeOriginals = settings.includeOriginals;
         if (settings.normalizeOnExport !== undefined) this.exportNormalize = settings.normalizeOnExport;
         if (settings.pitchDetectionEnabled !== undefined) this.pitchDetectionEnabled = settings.pitchDetectionEnabled;
+        if (settings.maxColumns !== undefined) this.maxColumns = settings.maxColumns;
       }
       if (restored) {
         const count = this.bankCtrl.slots.filter((s) => s !== null).length;
@@ -296,7 +298,7 @@ export class AppShell extends LitElement {
       </header>
 
       <main>
-        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled} .keyboardOpen=${this.keyboardOpen}></sp-sample-bank>
+        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled} .keyboardOpen=${this.keyboardOpen} .maxColumns=${this.maxColumns}></sp-sample-bank>
       </main>
 
       ${this.keyboardOpen ? html`<sp-virtual-keyboard></sp-virtual-keyboard>` : nothing}
@@ -322,8 +324,10 @@ export class AppShell extends LitElement {
       <sp-settings-dialog
         ?open=${this.settingsDialogOpen}
         .pitchDetectionEnabled=${this.pitchDetectionEnabled}
+        .maxColumns=${this.maxColumns}
         @dialog-close=${() => (this.settingsDialogOpen = false)}
         @pitch-detection-toggle=${this.onPitchDetectionToggle}
+        @max-columns-change=${this.onMaxColumnsChange}
       ></sp-settings-dialog>
 
       ${this.notification
@@ -449,6 +453,11 @@ export class AppShell extends LitElement {
     this.keyboardOpen = !this.keyboardOpen;
   }
 
+  private onMaxColumnsChange(e: CustomEvent<{ maxColumns: number }>): void {
+    this.maxColumns = e.detail.maxColumns;
+    this.persistSettings();
+  }
+
   private async onPitchDetectionToggle(e: CustomEvent<{ enabled: boolean }>): Promise<void> {
     this.pitchDetectionEnabled = e.detail.enabled;
     this.persistSettings();
@@ -515,6 +524,7 @@ export class AppShell extends LitElement {
       includeOriginals: this.exportIncludeOriginals,
       normalizeOnExport: this.exportNormalize,
       pitchDetectionEnabled: this.pitchDetectionEnabled,
+      maxColumns: this.maxColumns,
     }).catch((err) => console.warn('Failed to persist settings:', err));
   }
 }

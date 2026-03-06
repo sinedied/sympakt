@@ -753,6 +753,9 @@ export class SampleSlot extends LitElement {
           SET PITCH <svg width="6" height="8" viewBox="0 0 6 8" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,1 5,4 1,7"/></svg>
           ${this.pitchSubmenuOpen ? this.renderPitchSubmenu() : nothing}
         </div>
+        <button class="menu-item" @click=${this.onReverseSample}>
+          REVERSE
+        </button>
         <button class="menu-item" @click=${this.onToggleSplit}>
           ENABLE DUAL SAMPLE
         </button>
@@ -791,6 +794,9 @@ export class SampleSlot extends LitElement {
       <div class="sample-menu" @click=${(e: Event) => e.stopPropagation()}>
         <button class="menu-item" @click=${() => this.startRename(side)}>
           RENAME
+        </button>
+        <button class="menu-item" @click=${() => side === 'b' ? this.onReverseSplitSample() : this.onReverseSample()}>
+          REVERSE
         </button>
         ${side === 'a' ? html`
           <button class="menu-item" @click=${this.onToggleSplit}>
@@ -1139,6 +1145,32 @@ export class SampleSlot extends LitElement {
     this.pitchSubmenuOpen = false;
     this.dispatchEvent(
       new CustomEvent('split-toggle', {
+        detail: { index: this.index },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onReverseSample(): void {
+    this.sampleMenuOpen = false;
+    this.splitMenuOpen = false;
+    this.pitchSubmenuOpen = false;
+    this.stopPlayback();
+    this.dispatchEvent(
+      new CustomEvent('sample-reverse', {
+        detail: { index: this.index },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onReverseSplitSample(): void {
+    this.splitMenuOpenB = false;
+    this.stopPlaybackB();
+    this.dispatchEvent(
+      new CustomEvent('split-sample-reverse', {
         detail: { index: this.index },
         bubbles: true,
         composed: true,

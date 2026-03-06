@@ -23,6 +23,7 @@ interface StoredSample {
   loop: LoopSettings | null;
   lofi: LofiMode | boolean;
   detectedNote: string | null;
+  reversed?: boolean;
   splitEnabled?: boolean;
   splitSample?: StoredSplitSample | null;
 }
@@ -40,6 +41,7 @@ interface StoredSplitSample {
   originalFile: Uint8Array;
   loop: LoopSettings | null;
   detectedNote: string | null;
+  reversed?: boolean;
 }
 
 /** Settings persisted across sessions */
@@ -48,6 +50,7 @@ export interface StoredSettings {
   includeOriginals?: boolean;
   pitchDetectionEnabled?: boolean;
   normalizeOnExport?: boolean;
+  maxColumns?: number;
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -95,6 +98,7 @@ function serializeSample(sample: Sample): StoredSample {
       originalFile: sample.splitSample.originalFile,
       loop: sample.splitSample.loop,
       detectedNote: sample.splitSample.detectedNote,
+      reversed: sample.splitSample.reversed,
     };
   }
 
@@ -112,6 +116,7 @@ function serializeSample(sample: Sample): StoredSample {
     loop: sample.loop,
     lofi: sample.lofi,
     detectedNote: sample.detectedNote,
+    reversed: sample.reversed,
     splitEnabled: sample.splitEnabled,
     splitSample: storedSplit,
   };
@@ -149,6 +154,7 @@ function deserializeSample(stored: StoredSample): Sample {
       originalFile: stored.splitSample.originalFile,
       loop: stored.splitSample.loop,
       detectedNote: stored.splitSample.detectedNote ?? null,
+      reversed: stored.splitSample.reversed,
     };
   }
 
@@ -164,6 +170,7 @@ function deserializeSample(stored: StoredSample): Sample {
     loop: stored.loop,
     lofi: lofiMode,
     detectedNote: stored.detectedNote ?? null,
+    reversed: stored.reversed,
     splitEnabled: stored.splitEnabled ?? false,
     splitSample: splitSample ?? undefined,
   };

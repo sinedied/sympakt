@@ -35,20 +35,26 @@ export class SampleBank extends LitElement {
         overflow-x: hidden;
       }
 
+      /* 2 columns when wide enough AND maxColumns >= 2 */
       @media (min-width: 900px) {
-        .bank-list {
+        :host([max-columns="2"]) .bank-list,
+        :host([max-columns="3"]) .bank-list,
+        :host([max-columns="4"]) .bank-list {
           grid-template-rows: repeat(32, auto);
         }
       }
 
+      /* 3 columns when wide enough AND maxColumns >= 3 */
       @media (min-width: 1200px) {
-        .bank-list {
+        :host([max-columns="3"]) .bank-list,
+        :host([max-columns="4"]) .bank-list {
           grid-template-rows: repeat(22, auto);
         }
       }
 
+      /* 4 columns when wide enough AND maxColumns >= 4 */
       @media (min-width: 1600px) {
-        .bank-list {
+        :host([max-columns="4"]) .bank-list {
           grid-template-rows: repeat(16, auto);
         }
       }
@@ -59,6 +65,7 @@ export class SampleBank extends LitElement {
   @property({ type: Boolean }) pitchDebugMode = false;
   @property({ type: Boolean }) pitchDetectionEnabled = false;
   @property({ type: Boolean }) keyboardOpen = false;
+  @property({ type: Number, reflect: true, attribute: 'max-columns' }) maxColumns = 4;
 
   override render() {
     const selectedIndex = bankState.selectedIndex;
@@ -85,6 +92,8 @@ export class SampleBank extends LitElement {
               @split-loop-update=${this.onSplitLoopUpdate}
               @sample-rename=${this.onSampleRename}
               @split-sample-rename=${this.onSplitSampleRename}
+              @sample-reverse=${this.onSampleReverse}
+              @split-sample-reverse=${this.onSplitSampleReverse}
             ></sp-sample-slot>
           `,
         )}
@@ -182,6 +191,14 @@ export class SampleBank extends LitElement {
 
   private onSplitSampleRename(e: CustomEvent<{ index: number; name: string }>): void {
     bankState.renameSplitSample(e.detail.index, e.detail.name);
+  }
+
+  private onSampleReverse(e: CustomEvent<{ index: number }>): void {
+    bankState.reverseSample(e.detail.index);
+  }
+
+  private onSplitSampleReverse(e: CustomEvent<{ index: number }>): void {
+    bankState.reverseSplitSample(e.detail.index);
   }
 }
 

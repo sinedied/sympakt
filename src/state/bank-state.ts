@@ -223,6 +223,104 @@ class BankStateStore {
     this.notify();
   }
 
+  /** Reverse a sample's audio buffer and waveform data, toggling the reversed flag */
+  reverseSample(index: number): void {
+    const sample = this.slots[index];
+    if (!sample) return;
+
+    // Reverse the audio buffer channel data
+    const buf = sample.audioBuffer;
+    const newBuffer = new AudioBuffer({
+      length: buf.length,
+      numberOfChannels: buf.numberOfChannels,
+      sampleRate: buf.sampleRate,
+    });
+    for (let c = 0; c < buf.numberOfChannels; c++) {
+      const original = buf.getChannelData(c);
+      const reversed = new Float32Array(original.length);
+      for (let i = 0; i < original.length; i++) {
+        reversed[i] = original[original.length - 1 - i];
+      }
+      newBuffer.copyToChannel(reversed, c);
+    }
+
+    // Reverse the waveform data
+    const newWaveform = [...sample.waveformData].reverse();
+
+    // Adjust loop points if present
+    let loop = sample.loop;
+    if (loop) {
+      const duration = sample.duration;
+      const newStart = duration - loop.endTime;
+      const newEnd = duration - loop.startTime;
+      loop = {
+        startTime: Math.max(0, newStart),
+        endTime: Math.min(duration, newEnd),
+        crossfadeDuration: Math.min(loop.crossfadeDuration, Math.max(0, newStart)),
+      };
+    }
+
+    this.slots[index] = {
+      ...sample,
+      audioBuffer: newBuffer,
+      waveformData: newWaveform,
+      loop,
+      reversed: !sample.reversed,
+    };
+    this.notify();
+  }
+
+  /** Reverse the B-side sample's audio buffer and waveform data */
+  reverseSplitSample(index: number): void {
+    const sample = this.slots[index];
+    if (!sample?.splitSample) return;
+    const split = sample.splitSample;
+
+    // Reverse the audio buffer channel data
+    const buf = split.audioBuffer;
+    const newBuffer = new AudioBuffer({
+      length: buf.length,
+      numberOfChannels: buf.numberOfChannels,
+      sampleRate: buf.sampleRate,
+    });
+    for (let c = 0; c < buf.numberOfChannels; c++) {
+      const original = buf.getChannelData(c);
+      const reversed = new Float32Array(original.length);
+      for (let i = 0; i < original.length; i++) {
+        reversed[i] = original[original.length - 1 - i];
+      }
+      newBuffer.copyToChannel(reversed, c);
+    }
+
+    // Reverse the waveform data
+    const newWaveform = [...split.waveformData].reverse();
+
+    // Adjust loop points if present
+    let loop = split.loop;
+    if (loop) {
+      const duration = split.duration;
+      const newStart = duration - loop.endTime;
+      const newEnd = duration - loop.startTime;
+      loop = {
+        startTime: Math.max(0, newStart),
+        endTime: Math.min(duration, newEnd),
+        crossfadeDuration: Math.min(loop.crossfadeDuration, Math.max(0, newStart)),
+      };
+    }
+
+    this.slots[index] = {
+      ...sample,
+      splitSample: {
+        ...split,
+        audioBuffer: newBuffer,
+        waveformData: newWaveform,
+        loop,
+        reversed: !split.reversed,
+      },
+    };
+    this.notify();
+  }
+
   /** Move a sample from one slot to another, shifting others */
   moveSample(fromIndex: number, toIndex: number): void {
     if (fromIndex === toIndex) return;

@@ -39,6 +39,8 @@ export interface Sample {
   detectedNote: string | null;
   /** Optional debug info from pitch detection analysis */
   pitchDebug?: PitchDebugInfo;
+  /** Whether the sample audio is reversed */
+  reversed?: boolean;
   /** Whether dual split mode is enabled for this slot */
   splitEnabled?: boolean;
   /** B-side sample data in dual split mode (null/undefined = no B sample) */
@@ -67,6 +69,8 @@ export interface SplitSample {
   detectedNote: string | null;
   /** Optional debug info from pitch detection analysis */
   pitchDebug?: PitchDebugInfo;
+  /** Whether the sample audio is reversed */
+  reversed?: boolean;
 }
 
 /** Loop point and crossfade settings for seamless looping */
@@ -102,6 +106,8 @@ export interface SlotMetadata {
   lofi?: LofiMode | boolean;
   /** Auto-detected musical note (omitted if no clear pitch) */
   detectedNote?: string;
+  /** Whether the sample audio is reversed */
+  reversed?: boolean;
   /** Dual split mode enabled */
   splitEnabled?: boolean;
   /** B-side sample metadata in dual split */
@@ -113,6 +119,7 @@ export interface SlotMetadata {
     isTruncated: boolean;
     loop?: LoopSettings;
     detectedNote?: string;
+    reversed?: boolean;
   };
 }
 

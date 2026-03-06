@@ -186,6 +186,31 @@ npm run preview
 - The heart icon uses pixel-art rendering (`shape-rendering="crispEdges"`) to match the pixel font aesthetic
 - When adding new icons, follow the same pattern: export a `const` from `icons.ts`
 
+## Sample Reversing
+
+- **Purpose**: allows users to reverse any sample's audio from the context menu
+- **Trigger**: click a sample name to open the context menu, then choose **REVERSE**. Available in both normal mode and dual split mode (A and B sides).
+- **Behavior**: when toggled, the audio buffer's channel data is reversed in-place, the waveform data array is reversed, and any active loop points are adjusted (mirrored: `newStart = duration - oldEnd`, `newEnd = duration - oldStart`, crossfade clamped to available pre-start audio). A `reversed` boolean flag tracks the state.
+- **Visual indicator**: the `sp-waveform` component shows a **◄◄** badge overlay in the top-right corner when the sample is reversed. The waveform itself naturally reflects the reversed audio data.
+- **Playback**: since the audio buffer is physically reversed, normal playback/export just works — no special handling needed.
+- **Type**: `Sample.reversed?: boolean`, `SplitSample.reversed?: boolean`
+- **State**: `bankState.reverseSample(index)` and `bankState.reverseSplitSample(index)` handle the toggle
+- **Events**: `sample-reverse` (detail: `{ index }`) and `split-sample-reverse` (detail: `{ index }`)
+- **Persistence**: `reversed` is stored in IndexedDB via `StoredSample` / `StoredSplitSample` and restored on page reload
+- **Metadata**: `reversed` field included in `SlotMetadata` and split sample metadata in exported `sympakt.json`
+- **ZIP roundtrip**: `reversed` flag is stored in metadata JSON; on re-import, the audio buffer already contains the reversed data, and the flag is restored
+
+## Max Columns Setting
+
+- **Purpose**: lets users control the maximum number of columns displayed in the 64-slot bank grid (1 to 4)
+- **UI**: dropdown select in the Settings dialog (gear icon in header), options 1–4, default 4
+- **Behavior**: the bank grid uses CSS media queries scoped by a reflected `max-columns` attribute on the `sp-sample-bank` host element. The responsive breakpoints still apply (900px for 2 cols, 1200px for 3, 1600px for 4) but are capped at the chosen max.
+- **CSS approach**: attribute selectors `:host([max-columns="N"])` combined with media queries; no JavaScript resize listeners needed
+- **Type**: `maxColumns: number` (1–4) on `SampleBank` component, reflected as `max-columns` HTML attribute
+- **Events**: `max-columns-change` (detail: `{ maxColumns }`) dispatched from `sp-settings-dialog`
+- **State flow**: `AppShell.maxColumns` → `sp-sample-bank.maxColumns` (reflected attribute) → CSS selector matching
+- **Persistence**: `maxColumns` field in `StoredSettings`, saved/restored via IndexedDB `settings` store
+
 ## Build Output
 
 - Production build produces a **single `index.html`** file via `vite-plugin-singlefile`
@@ -198,7 +223,7 @@ npm run preview
 - **Storage**: IndexedDB database `sympakt-db` with two object stores: `samples` (keyed by slot index) and `settings` (keyed by name)
 - **Auto-save**: bank state is debounced-saved (500ms) on every change via `bankState.notify()`
 - **AudioBuffer serialization**: channel data stored as `Float32Array[]` with `sampleRate`, `numberOfChannels`, and `length` metadata; waveform data is regenerated on restore via `generateWaveformData()`
-- **Export options persistence**: pack name, "include originals" flag, normalize toggle, and pitch detection toggle saved to the `settings` store when changed and restored on load
+- **Export options persistence**: pack name, "include originals" flag, normalize toggle, pitch detection toggle, and max columns saved to the `settings` store when changed and restored on load
 - **Restore**: `bankState.restoreFromDB()` + `loadSettings()` called in `AppShell.connectedCallback()`; restoring skips triggering a save cycle
 - **Clear**: `bankState.clearAll()` clears both in-memory slots and all IndexedDB data; export options are also reset to defaults
 - **Graceful degradation**: all persistence operations use try/catch; failures are logged but do not block the UI
