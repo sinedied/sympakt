@@ -211,6 +211,18 @@ npm run preview
 - **State flow**: `AppShell.maxColumns` → `sp-sample-bank.maxColumns` (reflected attribute) → CSS selector matching
 - **Persistence**: `maxColumns` field in `StoredSettings`, saved/restored via IndexedDB `settings` store
 
+## Colorblind-Friendly Theme
+
+- **Purpose**: provides an alternate color palette optimized for users with color vision deficiency (deuteranopia, protanopia, tritanopia)
+- **Toggle**: "Alternate colors" checkbox in the Settings dialog (gear icon in header), off by default
+- **Palette**: replaces the default teal/red/orange scheme with blue (`#5599ff`) / pink (`#ff6699`) / yellow (`#ddbb00`) — colors that are universally distinguishable across common colorblind types
+- **Implementation**: CSS custom properties in `theme.ts` use a `var(--sp-X, default)` indirection pattern. When enabled, `applyColorblindTheme()` sets `--sp-*` base variables on `document.documentElement`; these cascade through shadow DOM and override the defaults. When disabled, the properties are removed and defaults apply.
+- **Canvas colors**: waveform and loop overlay drawing in `waveform-view.ts` reads colors from CSS custom properties via `getComputedStyle()`, so canvas rendering updates with the theme
+- **Affected variables**: `--accent`, `--accent-dim`, `--accent-glow`, `--danger`, `--warning`, `--warning-dim`, `--waveform-color`, `--waveform-truncated`
+- **Events**: `colorblind-theme-toggle` (detail: `{ enabled }`) dispatched from `sp-settings-dialog`
+- **State flow**: `AppShell.colorblindTheme` → `sp-settings-dialog.colorblindTheme` (property) → `applyColorblindTheme()` on `document.documentElement`
+- **Persistence**: `colorblindTheme` field in `StoredSettings`, saved/restored via IndexedDB `settings` store; theme is re-applied on session restore
+
 ## Build Output
 
 - Production build produces a **single `index.html`** file via `vite-plugin-singlefile`

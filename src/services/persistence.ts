@@ -51,6 +51,7 @@ export interface StoredSettings {
   pitchDetectionEnabled?: boolean;
   normalizeOnExport?: boolean;
   maxColumns?: number;
+  colorblindTheme?: boolean;
 }
 
 function openDB(): Promise<IDBDatabase> {

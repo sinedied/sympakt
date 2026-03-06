@@ -126,6 +126,7 @@ export class SettingsDialog extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: Boolean }) pitchDetectionEnabled = false;
+  @property({ type: Boolean }) colorblindTheme = false;
   @property({ type: Number }) maxColumns = 4;
 
   override render() {
@@ -160,6 +161,20 @@ export class SettingsDialog extends LitElement {
             </label>
           </div>
           <div class="field-hint">Auto-detect musical notes for each sample</div>
+
+          <div class="checkbox-field">
+            <input
+              id="colorblind-theme"
+              type="checkbox"
+              .checked=${this.colorblindTheme}
+              @change=${this.onColorblindThemeChange}
+              title="Use a colorblind-friendly color palette"
+            />
+            <label for="colorblind-theme" title="Use a colorblind-friendly color palette">
+              Alternate colors
+            </label>
+          </div>
+          <div class="field-hint">Colorblind-friendly colors</div>
 
           <div class="button-row">
             <button @click=${this.close}>Close</button>
@@ -203,6 +218,18 @@ export class SettingsDialog extends LitElement {
 
   private setMaxColumns(n: number): void {
     this.onMaxColumnsChange(n);
+  }
+
+  private onColorblindThemeChange(e: Event): void {
+    const enabled = (e.target as HTMLInputElement).checked;
+    this.colorblindTheme = enabled;
+    this.dispatchEvent(
+      new CustomEvent('colorblind-theme-toggle', {
+        detail: { enabled },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 }
 

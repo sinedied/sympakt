@@ -4,4 +4,5 @@ dist/
 .DS_Store
 TODO
 *.env*
+docs/images/banner
 packs/

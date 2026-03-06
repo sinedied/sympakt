@@ -74,6 +74,10 @@ export class WaveformView extends LitElement {
   private canvas?: HTMLCanvasElement;
   private overlayCanvas?: HTMLCanvasElement;
   private resizeObserver?: ResizeObserver;
+  private themeChangedHandler = () => {
+    this.drawWaveform();
+    this.drawLoopOverlay();
+  };
 
   override firstUpdated(): void {
     this.canvas = this.shadowRoot!.querySelector('canvas:first-of-type')!;
@@ -85,6 +89,7 @@ export class WaveformView extends LitElement {
     this.updateOverlayRef();
     this.drawWaveform();
     this.drawLoopOverlay();
+    document.addEventListener('sp-theme-changed', this.themeChangedHandler);
   }
 
   override updated(changed: PropertyValues): void {
@@ -106,6 +111,7 @@ export class WaveformView extends LitElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.resizeObserver?.disconnect();
+    document.removeEventListener('sp-theme-changed', this.themeChangedHandler);
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('mouseup', this.onMouseUp);
   }
@@ -197,7 +203,9 @@ export class WaveformView extends LitElement {
     ctx.fillRect(endX, 0, width - endX, height);
 
     // Loop region tint
-    ctx.fillStyle = 'rgba(0, 204, 170, 0.08)';
+    const accentColor = getComputedStyle(this).getPropertyValue('--accent').trim() || '#00ccaa';
+    const [ar, ag, ab] = this.hexToRgb(accentColor);
+    ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, 0.08)`;
     ctx.fillRect(startX, 0, endX - startX, height);
 
     // Crossfade zone at end of loop (blue)
@@ -227,11 +235,11 @@ export class WaveformView extends LitElement {
     // (rendered as HTML element in render() method)
 
     // Loop start handle
-    ctx.fillStyle = '#00ccaa';
+    ctx.fillStyle = accentColor;
     ctx.fillRect(startX - 1, 0, 2, height);
 
     // Loop end handle
-    ctx.fillStyle = '#00ccaa';
+    ctx.fillStyle = accentColor;
     ctx.fillRect(endX - 1, 0, 2, height);
 
     // Handle grab indicators (small triangles)
@@ -253,7 +261,7 @@ export class WaveformView extends LitElement {
   private drawHandle(ctx: CanvasRenderingContext2D, x: number, height: number, direction: 'left' | 'right'): void {
     const size = 4;
     const y = height / 2;
-    ctx.fillStyle = '#00ccaa';
+    ctx.fillStyle = getComputedStyle(this).getPropertyValue('--accent').trim() || '#00ccaa';
     ctx.beginPath();
     if (direction === 'right') {
       ctx.moveTo(x, y - size);
@@ -266,6 +274,16 @@ export class WaveformView extends LitElement {
     }
     ctx.closePath();
     ctx.fill();
+  }
+
+  /** Convert a hex color (#rrggbb) to [r, g, b] */
+  private hexToRgb(hex: string): [number, number, number] {
+    const h = hex.replace('#', '');
+    return [
+      parseInt(h.substring(0, 2), 16),
+      parseInt(h.substring(2, 4), 16),
+      parseInt(h.substring(4, 6), 16),
+    ];
   }
 
   // --- Mouse interaction for loop editing ---

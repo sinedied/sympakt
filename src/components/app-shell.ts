@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { theme, sharedStyles } from '../styles/theme.js';
+import { theme, sharedStyles, applyColorblindTheme } from '../styles/theme.js';
 import { iconHeart, iconGear, iconKeyboard } from '../icons.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import {
@@ -219,6 +219,7 @@ export class AppShell extends LitElement {
   @state() private pitchDetectionEnabled = false;
   @state() private keyboardOpen = false;
   @state() private maxColumns = 4;
+  @state() private colorblindTheme = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -247,6 +248,10 @@ export class AppShell extends LitElement {
         if (settings.normalizeOnExport !== undefined) this.exportNormalize = settings.normalizeOnExport;
         if (settings.pitchDetectionEnabled !== undefined) this.pitchDetectionEnabled = settings.pitchDetectionEnabled;
         if (settings.maxColumns !== undefined) this.maxColumns = settings.maxColumns;
+        if (settings.colorblindTheme !== undefined) {
+          this.colorblindTheme = settings.colorblindTheme;
+          applyColorblindTheme(settings.colorblindTheme);
+        }
       }
       if (restored) {
         const count = this.bankCtrl.slots.filter((s) => s !== null).length;
@@ -324,9 +329,11 @@ export class AppShell extends LitElement {
       <sp-settings-dialog
         ?open=${this.settingsDialogOpen}
         .pitchDetectionEnabled=${this.pitchDetectionEnabled}
+        .colorblindTheme=${this.colorblindTheme}
         .maxColumns=${this.maxColumns}
         @dialog-close=${() => (this.settingsDialogOpen = false)}
         @pitch-detection-toggle=${this.onPitchDetectionToggle}
+        @colorblind-theme-toggle=${this.onColorblindThemeToggle}
         @max-columns-change=${this.onMaxColumnsChange}
       ></sp-settings-dialog>
 
@@ -458,6 +465,12 @@ export class AppShell extends LitElement {
     this.persistSettings();
   }
 
+  private onColorblindThemeToggle(e: CustomEvent<{ enabled: boolean }>): void {
+    this.colorblindTheme = e.detail.enabled;
+    applyColorblindTheme(e.detail.enabled);
+    this.persistSettings();
+  }
+
   private async onPitchDetectionToggle(e: CustomEvent<{ enabled: boolean }>): Promise<void> {
     this.pitchDetectionEnabled = e.detail.enabled;
     this.persistSettings();
@@ -525,6 +538,7 @@ export class AppShell extends LitElement {
       normalizeOnExport: this.exportNormalize,
       pitchDetectionEnabled: this.pitchDetectionEnabled,
       maxColumns: this.maxColumns,
+      colorblindTheme: this.colorblindTheme,
     }).catch((err) => console.warn('Failed to persist settings:', err));
   }
 }

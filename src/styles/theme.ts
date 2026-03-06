@@ -12,14 +12,14 @@ export const theme = css`
     --text-primary: #e0e0e0;
     --text-secondary: #999999;
     --text-muted: #777777;
-    --accent: #00ccaa;
-    --accent-dim: #009977;
-    --accent-glow: rgba(0, 204, 170, 0.15);
-    --danger: #ff4444;
-    --warning: #ff8800;
-    --warning-dim: rgba(255, 136, 0, 0.3);
-    --waveform-color: #00ccaa;
-    --waveform-truncated: #ff8800;
+    --accent: var(--sp-accent, #00ccaa);
+    --accent-dim: var(--sp-accent-dim, #009977);
+    --accent-glow: var(--sp-accent-glow, rgba(0, 204, 170, 0.15));
+    --danger: var(--sp-danger, #ff4444);
+    --warning: var(--sp-warning, #ff8800);
+    --warning-dim: var(--sp-warning-dim, rgba(255, 136, 0, 0.3));
+    --waveform-color: var(--sp-waveform-color, #00ccaa);
+    --waveform-truncated: var(--sp-waveform-truncated, #ff8800);
     --scrollbar-track: #141414;
     --scrollbar-thumb: #333333;
     --font-pixel: 'PixelFont', monospace;
@@ -29,6 +29,32 @@ export const theme = css`
     --transition: 150ms ease;
   }
 `;
+
+/** Colorblind-friendly color overrides (blue/yellow/pink palette) */
+export const colorblindThemeProperties: Record<string, string> = {
+  '--sp-accent': '#5599ff',
+  '--sp-accent-dim': '#3366cc',
+  '--sp-accent-glow': 'rgba(85, 153, 255, 0.15)',
+  '--sp-danger': '#ff6699',
+  '--sp-warning': '#ddbb00',
+  '--sp-warning-dim': 'rgba(221, 187, 0, 0.3)',
+  '--sp-waveform-color': '#5599ff',
+  '--sp-waveform-truncated': '#ddbb00',
+};
+
+/** Apply or remove the colorblind theme on the document root */
+export function applyColorblindTheme(enabled: boolean): void {
+  const root = document.documentElement;
+  for (const [prop, value] of Object.entries(colorblindThemeProperties)) {
+    if (enabled) {
+      root.style.setProperty(prop, value);
+    } else {
+      root.style.removeProperty(prop);
+    }
+  }
+  // Notify waveform components to repaint with new colors
+  document.dispatchEvent(new CustomEvent('sp-theme-changed'));
+}
 
 export const sharedStyles = css`
   * {
