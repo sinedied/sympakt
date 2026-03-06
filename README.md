@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./docs/images/sympakt-logo.png" alt="" align="center" height="42" />
+
 # Sympakt
 
 **Sample Pack Manager for the Elektron Syntakt**
