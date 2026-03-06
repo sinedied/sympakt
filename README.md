@@ -68,8 +68,21 @@ Exported `.zip` files contain:
 | `sympakt.json` | Pack name, slot mappings, durations, loop settings, original filenames |
 | `originals/` *(optional)* | Original source files, if "Include originals" is checked |
 
-> [!NOTE]
-> Non-looped samples longer than 5 seconds are automatically truncated on export (10 seconds in LOFI mode, 20 seconds in XLOFI mode). Looped samples export only the selected loop region with crossfade applied. LOFI samples are exported at 2× speed (pitch down one octave on Syntakt), XLOFI at 4× speed (pitch down two octaves). Dual sample slots are exported as a single WAV with A in the first half and B reversed in the second half, separated by 20ms of silence — each side can be up to 2.49s (normal), 4.99s (LOFI), or 9.99s (XLOFI). Samples are normalized to peak volume by default.
+### Truncation
+
+Non-looped samples longer than 5s are automatically truncated on export. LOFI raises the limit to 10s, XLOFI to 20s. Looped samples export only the selected loop region with crossfade applied.
+
+### LOFI / XLOFI
+
+LOFI samples are exported at 2× speed — pitch down one octave on the Syntakt to hear the original sound. XLOFI exports at 4× speed (pitch down two octaves).
+
+### Dual Samples
+
+Exported as a single WAV: A in the first half, B reversed in the second half, separated by 20ms of silence. Max duration per side: 2.49s (normal), 4.99s (LOFI), 9.99s (XLOFI).
+
+### Normalization
+
+Samples are peak-normalized by default. You can disable this in the export dialog.
 
 ## Development
 
