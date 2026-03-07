@@ -52,6 +52,7 @@ export interface StoredSettings {
   normalizeOnExport?: boolean;
   maxColumns?: number;
   colorblindTheme?: boolean;
+  extendedLofiModes?: boolean;
 }
 
 function openDB(): Promise<IDBDatabase> {

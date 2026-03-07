@@ -220,6 +220,7 @@ export class AppShell extends LitElement {
   @state() private keyboardOpen = false;
   @state() private maxColumns = 4;
   @state() private colorblindTheme = false;
+  @state() private extendedLofiModes = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -252,6 +253,7 @@ export class AppShell extends LitElement {
           this.colorblindTheme = settings.colorblindTheme;
           applyColorblindTheme(settings.colorblindTheme);
         }
+        if (settings.extendedLofiModes !== undefined) this.extendedLofiModes = settings.extendedLofiModes;
       }
       if (restored) {
         const count = this.bankCtrl.slots.filter((s) => s !== null).length;
@@ -303,7 +305,7 @@ export class AppShell extends LitElement {
       </header>
 
       <main>
-        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled} .keyboardOpen=${this.keyboardOpen} .maxColumns=${this.maxColumns}></sp-sample-bank>
+        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled} .keyboardOpen=${this.keyboardOpen} .maxColumns=${this.maxColumns} .extendedLofiModes=${this.extendedLofiModes}></sp-sample-bank>
       </main>
 
       ${this.keyboardOpen ? html`<sp-virtual-keyboard></sp-virtual-keyboard>` : nothing}
@@ -330,10 +332,12 @@ export class AppShell extends LitElement {
         ?open=${this.settingsDialogOpen}
         .pitchDetectionEnabled=${this.pitchDetectionEnabled}
         .colorblindTheme=${this.colorblindTheme}
+        .extendedLofiModes=${this.extendedLofiModes}
         .maxColumns=${this.maxColumns}
         @dialog-close=${() => (this.settingsDialogOpen = false)}
         @pitch-detection-toggle=${this.onPitchDetectionToggle}
         @colorblind-theme-toggle=${this.onColorblindThemeToggle}
+        @extended-lofi-toggle=${this.onExtendedLofiToggle}
         @max-columns-change=${this.onMaxColumnsChange}
       ></sp-settings-dialog>
 
@@ -471,6 +475,11 @@ export class AppShell extends LitElement {
     this.persistSettings();
   }
 
+  private onExtendedLofiToggle(e: CustomEvent<{ enabled: boolean }>): void {
+    this.extendedLofiModes = e.detail.enabled;
+    this.persistSettings();
+  }
+
   private async onPitchDetectionToggle(e: CustomEvent<{ enabled: boolean }>): Promise<void> {
     this.pitchDetectionEnabled = e.detail.enabled;
     this.persistSettings();
@@ -539,6 +548,7 @@ export class AppShell extends LitElement {
       pitchDetectionEnabled: this.pitchDetectionEnabled,
       maxColumns: this.maxColumns,
       colorblindTheme: this.colorblindTheme,
+      extendedLofiModes: this.extendedLofiModes,
     }).catch((err) => console.warn('Failed to persist settings:', err));
   }
 }

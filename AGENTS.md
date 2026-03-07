@@ -102,7 +102,7 @@ npm run preview
 - Decoding: use `AudioContext.decodeAudioData()` for broad format support
 - Resampling: use `OfflineAudioContext` at 48kHz to resample imported audio (full duration preserved)
 - Waveform generation: compute RMS values per pixel column from decoded PCM data
-- Truncation: non-looped samples > 5s (or > 10s in LOFI, > 20s in XLOFI mode) show orange truncated region on waveform; truncation happens at export
+- Truncation: non-looped samples > 5s (or > 10s in LOFI, > 20s in XLOFI, > 40s in SXLOFI, > 80s in GXLOFI mode) show orange truncated region on waveform; truncation happens at export
 - WAV encoding: manual PCM encoding to ArrayBuffer (no library needed)
 
 ## Sample Renaming
@@ -124,9 +124,9 @@ npm run preview
   - Blue zones: crossfade blend region at end of loop + source region before loop start
   - Dimmed regions: audio outside the loop
 - **Crossfade approach**: the tail of the loop is blended with audio from *before* the loop start point (not from the beginning of the loop). This produces a natural seamless transition when playback wraps.
-- **Constraints**: loop duration ≤ 5s (≤ 10s in LOFI, ≤ 20s in XLOFI mode), crossfade ≤ loop length, crossfade ≤ available pre-start audio
+- **Constraints**: loop duration ≤ 5s (≤ 10s in LOFI, ≤ 20s in XLOFI, ≤ 40s in SXLOFI, ≤ 80s in GXLOFI mode), crossfade ≤ loop length, crossfade ≤ available pre-start audio
 - **Playback preview**: looped playback with crossfade baked in via Web Audio API `AudioBufferSourceNode.loop`
-- **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s (10s in LOFI, 20s in XLOFI mode)
+- **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s (10s in LOFI, 20s in XLOFI, 40s in SXLOFI, 80s in GXLOFI mode)
 - **ZIP roundtrip**: loop settings and LOFI mode are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
 
 ## Pitch Detection
@@ -145,19 +145,22 @@ npm run preview
 - **ZIP roundtrip**: note is stored in metadata JSON; on re-import from a ZIP with metadata, stored notes are always used and pitch detection is never run (even if globally enabled) to avoid overriding user-set values
 - **Debug mode**: hidden pitch diagnostics can be toggled with **Cmd/Ctrl + Alt + D** (Shift optional) to display per-slot detection stats (clarity, ZCR, spread, rejection reason)
 
-## LOFI / XLOFI Mode
+## LOFI / XLOFI / SXLOFI / GXLOFI Mode
 
-- **Purpose**: extends the effective max sample time beyond 5s by exporting audio at higher playback speed. LOFI (2× speed, one octave up) gives 10s; XLOFI (4× speed, two octaves up) gives 20s. On the Syntakt, the user pitches the sample down accordingly to hear the original sound.
-- **Three-state toggle**: each slot has a **LO** button that cycles: off → LOFI (orange) → XLOFI (pink, label changes to **XL**) → off.
-- **Type**: `LofiMode = 'off' | 'lofi' | 'xlofi'` — replaces the old boolean. `normalizeLofiMode()` handles backward-compatible deserialization of legacy `true`/`false` values.
+- **Purpose**: extends the effective max sample time beyond 5s by exporting audio at higher playback speed. LOFI (2× speed, one octave up) gives 10s; XLOFI (4× speed, two octaves up) gives 20s; SXLOFI (8× speed, three octaves up) gives 40s; GXLOFI (16× speed, four octaves up) gives 80s. On the Syntakt, the user pitches the sample down accordingly to hear the original sound.
+- **Cycle toggle**: each slot has a **LO** button that cycles through available modes. By default: off → LOFI (orange) → XLOFI (pink, **XL**) → off. With extended LOFI modes enabled: off → LOFI (orange) → XLOFI (pink, **XL**) → SXLOFI (purple, **SX**) → GXLOFI (blue, **GX**) → off.
+- **Extended modes setting**: SXLOFI and GXLOFI are hidden by default. Enable them via the "Extended LOFI modes" checkbox in the Settings dialog (gear icon). The setting is persisted in IndexedDB.
+- **Type**: `LofiMode = 'off' | 'lofi' | 'xlofi' | 'sxlofi' | 'gxlofi'`. `normalizeLofiMode()` handles backward-compatible deserialization of legacy `true`/`false` values.
 - **Helper functions** (in `types/index.ts`):
-  - `getLofiSpeedFactor(mode)` → 1, 2, or 4
-  - `getEffectiveMaxDuration(mode)` → 5, 10, or 20
+  - `getLofiSpeedFactor(mode)` → 1, 2, 4, 8, or 16
+  - `getEffectiveMaxDuration(mode)` → 5, 10, 20, 40, or 80
   - `isLofiActive(mode)` → boolean
   - `normalizeLofiMode(value)` → converts legacy boolean to LofiMode
+  - `getNextLofiMode(current, extendedEnabled)` → next mode in cycle
+  - `LOFI_CYCLE` → ordered array of all modes
 - **Effective durations**: `MAX_SAMPLE_DURATION × getLofiSpeedFactor(mode)` for truncation, loop constraints, and waveform display.
 - **Export**: `resampleToExportFormat(buffer, speedFactor)` produces a buffer at N× playback speed; loop times are scaled by `1/speedFactor` in the export domain.
-- **Preview playback**: plays at normal 1× rate with a **lowpass filter** at `EXPORT_SAMPLE_RATE / (2 × speedFactor)` to simulate the reduced bandwidth of the final exported audio (12 kHz for LOFI, 6 kHz for XLOFI).
+- **Preview playback**: plays at normal 1× rate with a **lowpass filter** at `EXPORT_SAMPLE_RATE / (2 × speedFactor)` to simulate the reduced bandwidth of the final exported audio (12 kHz for LOFI, 6 kHz for XLOFI, 3 kHz for SXLOFI, 1.5 kHz for GXLOFI).
 - **State**: `Sample.lofi: LofiMode`, cycled via `bankState.updateSampleLofi()`. Changing mode recalculates `isTruncated` and clamps loop duration when reducing the effective max.
 - **Metadata**: `lofi` field is saved/restored in `sympakt.json` for ZIP roundtrip. Legacy `true`/`false` values are auto-converted to `'lofi'`/`'off'`.
 
@@ -255,7 +258,7 @@ npm run preview
 - **Root note**: C3 is always the root (semitone offset 0). The displayed range defaults to C3–B4 (2 octaves) and can be shifted.
 - **Octave shifting**: Left/Right arrow keys or ◀/▶ buttons shift the displayed 2-octave range (C0–B1 through C6–B7). Shifting stops all active notes.
 - **Sample navigation**: Up/Down arrow keys select the previous/next filled sample slot.
-- **Playback**: `playSamplePitchedFull(sample, semitones)` in `audio-engine.ts` renders the full sample including loop with crossfade, LOFI/XLOFI lowpass filter, and truncation to `getEffectiveMaxDuration(lofi)`. Uses `playbackRate = 2^(semitones/12)` for pitch shifting.
+- **Playback**: `playSamplePitchedFull(sample, semitones)` in `audio-engine.ts` renders the full sample including loop with crossfade, LOFI/XLOFI/SXLOFI/GXLOFI lowpass filter, and truncation to `getEffectiveMaxDuration(lofi)`. Uses `playbackRate = 2^(semitones/12)` for pitch shifting.
 - **QWERTY mapping**: middle row (A=C, S=D, D=E, F=F, G=G, H=A, J=B) for white keys, top row (W=C#, E=D#, T=F#, Y=G#, U=A#) for black keys. Shortcuts always map to the **first displayed octave** only. Keys in the second octave show no binding.
 - **Touch/pointer support**: keys respond to `pointerdown`/`pointerup`/`pointerleave` with pointer capture for reliable mobile interaction. `touch-action: none` prevents scroll interference.
 - **Visual feedback**: pressed keys get `.active` class (accent color for white keys, accent-dim for black keys).

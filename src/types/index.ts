@@ -1,5 +1,5 @@
-/** LOFI mode: off = normal, lofi = 2× speed (10s max), xlofi = 4× speed (20s max) */
-export type LofiMode = 'off' | 'lofi' | 'xlofi';
+/** LOFI mode: off = normal, lofi = 2× speed (10s max), xlofi = 4× speed (20s max), sxlofi = 8× speed (40s max), gxlofi = 16× speed (80s max) */
+export type LofiMode = 'off' | 'lofi' | 'xlofi' | 'sxlofi' | 'gxlofi';
 
 export interface PitchDebugInfo {
   detectedFrequency: number | null;
@@ -150,11 +150,15 @@ export const WAVEFORM_COLUMNS = 200; // number of columns in waveform display
 export const METADATA_FILENAME = 'sympakt.json';
 export const LOFI_SPEED_FACTOR = 2; // playback speed multiplier for LOFI mode
 export const XLOFI_SPEED_FACTOR = 4; // playback speed multiplier for XLOFI mode
+export const SXLOFI_SPEED_FACTOR = 8; // playback speed multiplier for SXLOFI mode
+export const GXLOFI_SPEED_FACTOR = 16; // playback speed multiplier for GXLOFI mode
 export const DUAL_SPLIT_SILENCE = 0.020; // 20ms minimum silence between A and B in dual split
 
 /** Get the speed factor for a given LOFI mode */
 export function getLofiSpeedFactor(mode: LofiMode): number {
   switch (mode) {
+    case 'gxlofi': return GXLOFI_SPEED_FACTOR;
+    case 'sxlofi': return SXLOFI_SPEED_FACTOR;
     case 'xlofi': return XLOFI_SPEED_FACTOR;
     case 'lofi': return LOFI_SPEED_FACTOR;
     default: return 1;
@@ -174,6 +178,17 @@ export function isLofiActive(mode: LofiMode): boolean {
 /** Get the max duration for each side of a dual split */
 export function getSplitMaxDuration(mode: LofiMode): number {
   return (getEffectiveMaxDuration(mode) - DUAL_SPLIT_SILENCE) / 2;
+}
+
+/** Ordered list of LOFI modes for cycling */
+export const LOFI_CYCLE: LofiMode[] = ['off', 'lofi', 'xlofi', 'sxlofi', 'gxlofi'];
+
+/** Get the next LOFI mode in the cycle, optionally limited to basic modes only */
+export function getNextLofiMode(current: LofiMode, extendedEnabled: boolean): LofiMode {
+  const maxIndex = extendedEnabled ? LOFI_CYCLE.length - 1 : 2; // 2 = xlofi index
+  const currentIndex = LOFI_CYCLE.indexOf(current);
+  const nextIndex = (currentIndex < 0 || currentIndex >= maxIndex) ? 0 : currentIndex + 1;
+  return LOFI_CYCLE[nextIndex];
 }
 
 /** Normalize legacy boolean lofi values to LofiMode */

@@ -25,7 +25,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 
 - **64-slot sample bank** — drag-and-drop grid with instant audio preview, auto-conversion to Syntakt format (16-bit, 48 kHz, mono), and ZIP import/export with metadata
 - **Loop editing with crossfade** — interactive waveform overlay with zero-crossing snap, adjustable crossfade for click-free seamless loops
-- **LOFI / XLOFI mode** — extends max sample time to 10s or 20s by exporting pitched up, with bandwidth-accurate preview
+- **LOFI / XLOFI / SXLOFI / GXLOFI mode** — extends max sample time to 10s, 20s, 40s, or 80s by exporting pitched up, with bandwidth-accurate preview
 - **Dual sample mode** — pack two samples into one slot (A+B); doubles your sample count within the 64-slot limit
 - **Pitch detection** — auto-detects fundamental frequency and displays the musical note
 - **Virtual keyboard** — 2-octave chromatic keyboard to audition samples at different pitches
@@ -39,7 +39,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Reorder** — drag slots to rearrange the bank
 - **Preview** — click the play button on any slot to hear the sample
 - **Loop** — click the loop button to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
-- **LOFI / XLOFI** — click **LO** to cycle through LOFI modes: off → LOFI (10s max, 2× speed) → XLOFI (20s max, 4× speed). On the Syntakt, pitch the sample down one octave (LOFI) or two octaves (XLOFI) to hear the original sound.
+- **LOFI / XLOFI** — click **LO** to cycle through LOFI modes: off → LOFI (10s max, 2× speed) → XLOFI (20s max, 4× speed). Enable "Extended LOFI modes" in settings to add SXLOFI (40s max, 8× speed) and GXLOFI (80s max, 16× speed) to the cycle. On the Syntakt, pitch the sample down accordingly to hear the original sound.
 - **Remove** — click the × button to clear a slot (requires confirmation)
 - **Rename** — click a sample name and choose **RENAME** to edit the display name inline. Press Enter to confirm or Escape to cancel. Works in both normal and dual split modes.
 - **Dual sample mode** — click a sample name and choose **ENABLE DUAL SAMPLE** to split the slot into A and B halves. Drop or click to import a sample into each half. Each side has its own waveform, loop points, and playback controls. LOFI and delete affect the whole slot. To revert to single mode, click the A-side name and choose **DISABLE DUAL SAMPLE**.
@@ -73,15 +73,15 @@ Exported `.zip` files contain:
 
 ### Truncation
 
-Non-looped samples longer than 5s are automatically truncated on export. LOFI raises the limit to 10s, XLOFI to 20s. Looped samples export only the selected loop region with crossfade applied.
+Non-looped samples longer than 5s are automatically truncated on export. LOFI raises the limit to 10s, XLOFI to 20s, SXLOFI to 40s, GXLOFI to 80s. Looped samples export only the selected loop region with crossfade applied.
 
-### LOFI / XLOFI
+### LOFI / XLOFI / SXLOFI / GXLOFI
 
-LOFI samples are exported at 2× speed — pitch down one octave on the Syntakt to hear the original sound. XLOFI exports at 4× speed (pitch down two octaves).
+LOFI samples are exported at 2× speed — pitch down one octave on the Syntakt to hear the original sound. XLOFI exports at 4× speed (two octaves down), SXLOFI at 8× (three octaves down), GXLOFI at 16× (four octaves down). SXLOFI and GXLOFI are available when "Extended LOFI modes" is enabled in settings.
 
 ### Dual Samples
 
-Exported as a single WAV: A in the first half, B reversed in the second half, separated by 20ms of silence. Max duration per side: 2.49s (normal), 4.99s (LOFI), 9.99s (XLOFI).
+Exported as a single WAV: A in the first half, B reversed in the second half, separated by 20ms of silence. Max duration per side: 2.49s (normal), 4.99s (LOFI), 9.99s (XLOFI), 19.99s (SXLOFI), 39.99s (GXLOFI).
 
 ### Normalization
 

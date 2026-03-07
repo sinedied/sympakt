@@ -66,6 +66,7 @@ export class SampleBank extends LitElement {
   @property({ type: Boolean }) pitchDetectionEnabled = false;
   @property({ type: Boolean }) keyboardOpen = false;
   @property({ type: Number, reflect: true, attribute: 'max-columns' }) maxColumns = 4;
+  @property({ type: Boolean }) extendedLofiModes = false;
 
   override render() {
     const selectedIndex = bankState.selectedIndex;
@@ -77,6 +78,7 @@ export class SampleBank extends LitElement {
               .index=${i}
               .sample=${sample}
               .pitchDebugMode=${this.pitchDebugMode}
+              .extendedLofiModes=${this.extendedLofiModes}
               .selected=${this.keyboardOpen && selectedIndex === i && sample !== null}
               @sample-import=${this.onSampleImport}
               @sample-import-batch=${this.onSampleImportBatch}

@@ -1,8 +1,8 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration, getSplitMaxDuration, ALL_NOTES } from '../types/index.js';
-import type { LoopSettings, LofiMode } from '../types/index.js';
+import { Sample, MAX_SAMPLE_DURATION, getEffectiveMaxDuration, getSplitMaxDuration, ALL_NOTES, getNextLofiMode } from '../types/index.js';
+import type { LoopSettings } from '../types/index.js';
 import { playSample, playSampleLooped } from '../services/audio-engine.js';
 import { iconPlay, iconStop, iconLoop, iconCheck, iconClose, iconPlus } from '../icons.js';
 import './waveform-view.js';
@@ -283,6 +283,18 @@ export class SampleSlot extends LitElement {
         color: #000;
       }
 
+      .btn-lofi.sxlofi {
+        background: #aa44ff;
+        border-color: #aa44ff;
+        color: #000;
+      }
+
+      .btn-lofi.gxlofi {
+        background: #4488ff;
+        border-color: #4488ff;
+        color: #000;
+      }
+
       input[type='file'] {
         display: none;
       }
@@ -387,6 +399,7 @@ export class SampleSlot extends LitElement {
   @property({ type: Object }) sample: Sample | null = null;
   @property({ type: Boolean }) pitchDebugMode = false;
   @property({ type: Boolean }) selected = false;
+  @property({ type: Boolean }) extendedLofiModes = false;
 
   @state() private dragOver = false;
   @state() private dragOverA = false;
@@ -935,6 +948,8 @@ export class SampleSlot extends LitElement {
   private get lofiButtonClass(): string {
     if (!this.sample) return '';
     switch (this.sample.lofi) {
+      case 'gxlofi': return 'gxlofi';
+      case 'sxlofi': return 'sxlofi';
       case 'xlofi': return 'xlofi';
       case 'lofi': return 'active';
       default: return '';
@@ -943,13 +958,24 @@ export class SampleSlot extends LitElement {
 
   private get lofiButtonLabel(): string {
     if (!this.sample) return 'LO';
-    return this.sample.lofi === 'xlofi' ? 'XL' : 'LO';
+    switch (this.sample.lofi) {
+      case 'gxlofi': return 'GX';
+      case 'sxlofi': return 'SX';
+      case 'xlofi': return 'XL';
+      default: return 'LO';
+    }
   }
 
   private get lofiButtonTitle(): string {
     if (!this.sample) return '';
     switch (this.sample.lofi) {
-      case 'xlofi': return 'Disable XLOFI — click to return to normal (5s max)';
+      case 'gxlofi': return 'Disable GXLOFI — click to return to normal (5s max)';
+      case 'sxlofi': return this.extendedLofiModes
+        ? 'Enable GXLOFI — 80s max, pitched up 4 octaves (1/16 sample rate)'
+        : 'Disable SXLOFI — click to return to normal (5s max)';
+      case 'xlofi': return this.extendedLofiModes
+        ? 'Enable SXLOFI — 40s max, pitched up 3 octaves (1/8 sample rate)'
+        : 'Disable XLOFI — click to return to normal (5s max)';
       case 'lofi': return 'Enable XLOFI — 20s max, pitched up 2 octaves (quarter sample rate)';
       default: return 'Enable LOFI — 10s max, pitched up 1 octave (half sample rate)';
     }
@@ -1057,9 +1083,7 @@ export class SampleSlot extends LitElement {
   private toggleLofi(): void {
     if (!this.sample) return;
     this.stopPlayback();
-    const nextMode: LofiMode =
-      this.sample.lofi === 'off' ? 'lofi' :
-      this.sample.lofi === 'lofi' ? 'xlofi' : 'off';
+    const nextMode = getNextLofiMode(this.sample.lofi, this.extendedLofiModes);
     this.dispatchEvent(
       new CustomEvent('lofi-toggle', {
         detail: { index: this.index, lofi: nextMode },

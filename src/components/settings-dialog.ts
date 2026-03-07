@@ -127,6 +127,7 @@ export class SettingsDialog extends LitElement {
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: Boolean }) pitchDetectionEnabled = false;
   @property({ type: Boolean }) colorblindTheme = false;
+  @property({ type: Boolean }) extendedLofiModes = false;
   @property({ type: Number }) maxColumns = 4;
 
   override render() {
@@ -161,6 +162,20 @@ export class SettingsDialog extends LitElement {
             </label>
           </div>
           <div class="field-hint">Auto-detect musical notes for each sample</div>
+
+          <div class="checkbox-field">
+            <input
+              id="extended-lofi"
+              type="checkbox"
+              .checked=${this.extendedLofiModes}
+              @change=${this.onExtendedLofiChange}
+              title="Enable Super Extra LOFI (40s) and Giga Extra LOFI (80s) modes"
+            />
+            <label for="extended-lofi" title="Enable Super Extra LOFI (40s) and Giga Extra LOFI (80s) modes">
+              Extended LOFI modes
+            </label>
+          </div>
+          <div class="field-hint">Add SX (40s) and GX (80s) to the LOFI cycle</div>
 
           <div class="checkbox-field">
             <input
@@ -225,6 +240,18 @@ export class SettingsDialog extends LitElement {
     this.colorblindTheme = enabled;
     this.dispatchEvent(
       new CustomEvent('colorblind-theme-toggle', {
+        detail: { enabled },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onExtendedLofiChange(e: Event): void {
+    const enabled = (e.target as HTMLInputElement).checked;
+    this.extendedLofiModes = enabled;
+    this.dispatchEvent(
+      new CustomEvent('extended-lofi-toggle', {
         detail: { enabled },
         bubbles: true,
         composed: true,
