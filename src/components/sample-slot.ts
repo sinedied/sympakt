@@ -415,6 +415,8 @@ export class SampleSlot extends LitElement {
   @state() private renamingTarget: 'main' | 'a' | 'b' | null = null;
   private stopFn?: () => void;
   private stopFnB?: () => void;
+  private playTimer?: ReturnType<typeof setTimeout>;
+  private playTimerB?: ReturnType<typeof setTimeout>;
   private outsideClickHandler = this.onOutsideClick.bind(this);
   private stopAllHandler = this.onStopAll.bind(this);
 
@@ -1119,11 +1121,13 @@ export class SampleSlot extends LitElement {
       this.stopFn = playSample(this.sample.audioBuffer, 0, lofi);
       // Auto-stop after effective duration
       const dur = Math.min(this.sample.duration, this.effectiveMaxDuration);
-      setTimeout(() => this.stopPlayback(), dur * 1000);
+      this.playTimer = setTimeout(() => this.stopPlayback(), dur * 1000);
     }
   }
 
   private stopPlayback(): void {
+    clearTimeout(this.playTimer);
+    this.playTimer = undefined;
     this.stopFn?.();
     this.stopFn = undefined;
     this.playing = false;
@@ -1154,11 +1158,13 @@ export class SampleSlot extends LitElement {
     } else {
       this.stopFnB = playSample(b.audioBuffer, 0, lofi);
       const dur = Math.min(b.duration, this.splitMaxDuration);
-      setTimeout(() => this.stopPlaybackB(), dur * 1000);
+      this.playTimerB = setTimeout(() => this.stopPlaybackB(), dur * 1000);
     }
   }
 
   private stopPlaybackB(): void {
+    clearTimeout(this.playTimerB);
+    this.playTimerB = undefined;
     this.stopFnB?.();
     this.stopFnB = undefined;
     this.playingB = false;
