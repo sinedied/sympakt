@@ -98,7 +98,7 @@ export class WaveformView extends LitElement {
     this.updateOverlayRef();
     this.cfLabelEl = this.shadowRoot!.querySelector('.cf-label') as HTMLElement | undefined;
 
-    if (changed.has('data') || changed.has('duration') || changed.has('truncated') || changed.has('lofi')) {
+    if (changed.has('data') || changed.has('duration') || changed.has('truncated') || changed.has('lofi') || changed.has('loopEnabled')) {
       this.drawWaveform();
     }
     if (changed.has('loop') || changed.has('loopEnabled') || changed.has('data') || changed.has('dragTarget') || changed.has('lofi')) {
@@ -139,7 +139,7 @@ export class WaveformView extends LitElement {
     const centerY = height / 2;
 
     const truncateCol =
-      this.truncated && this.duration > this.effectiveMaxDuration
+      this.truncated && !this.loopEnabled && this.duration > this.effectiveMaxDuration
         ? Math.floor((this.effectiveMaxDuration / this.duration) * columns)
         : columns;
 
