@@ -459,6 +459,7 @@ export class SampleSlot extends LitElement {
         @dragleave=${isSplit ? undefined : this.onDragLeave}
         @drop=${isSplit ? undefined : this.onDrop}
         @click=${this.onSlotClick}
+        @contextmenu=${this.sample ? this.onContextMenu : undefined}
       >
         <span class="slot-number">${slotNum}</span>
 
@@ -739,6 +740,57 @@ export class SampleSlot extends LitElement {
     this.splitMenuOpen = false;
     this.splitMenuOpenB = false;
     this.pitchSubmenuOpen = false;
+  }
+
+  private onContextMenu(e: MouseEvent): void {
+    if (!this.sample) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Close any open menus on other slots (their once-click listeners won't fire on right-click)
+    document.dispatchEvent(new MouseEvent('click'));
+
+    const isSplit = this.sample.splitEnabled ?? false;
+    if (isSplit) {
+      // Determine which half was clicked
+      const target = e.composedPath();
+      const splitHalves = this.shadowRoot?.querySelectorAll('.split-half');
+      if (splitHalves && splitHalves.length >= 2) {
+        const isB = target.some(el => el === splitHalves[1]);
+        if (isB && this.sample.splitSample) {
+          this.splitMenuOpenB = !this.splitMenuOpenB;
+          this.splitMenuOpen = false;
+          if (this.splitMenuOpenB) {
+            requestAnimationFrame(() => {
+              document.addEventListener('click', () => {
+                this.splitMenuOpenB = false;
+              }, { once: true });
+            });
+          }
+        } else {
+          this.splitMenuOpen = !this.splitMenuOpen;
+          this.splitMenuOpenB = false;
+          if (this.splitMenuOpen) {
+            requestAnimationFrame(() => {
+              document.addEventListener('click', () => {
+                this.splitMenuOpen = false;
+              }, { once: true });
+            });
+          }
+        }
+      }
+    } else {
+      this.sampleMenuOpen = !this.sampleMenuOpen;
+      this.pitchSubmenuOpen = false;
+      if (this.sampleMenuOpen) {
+        requestAnimationFrame(() => {
+          document.addEventListener('click', () => {
+            this.sampleMenuOpen = false;
+            this.pitchSubmenuOpen = false;
+          }, { once: true });
+        });
+      }
+    }
   }
 
   private toggleSampleMenu(e: Event): void {
