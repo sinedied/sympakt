@@ -221,6 +221,7 @@ export class AppShell extends LitElement {
   @state() private maxColumns = 4;
   @state() private colorblindTheme = false;
   @state() private extendedLofiModes = false;
+  @state() private loadingDefaultPack = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -305,7 +306,15 @@ export class AppShell extends LitElement {
       </header>
 
       <main>
-        <sp-sample-bank .pitchDebugMode=${this.pitchDebugMode} .pitchDetectionEnabled=${this.pitchDetectionEnabled} .keyboardOpen=${this.keyboardOpen} .maxColumns=${this.maxColumns} .extendedLofiModes=${this.extendedLofiModes}></sp-sample-bank>
+        <sp-sample-bank
+          .pitchDebugMode=${this.pitchDebugMode}
+          .pitchDetectionEnabled=${this.pitchDetectionEnabled}
+          .keyboardOpen=${this.keyboardOpen}
+          .maxColumns=${this.maxColumns}
+          .extendedLofiModes=${this.extendedLofiModes}
+          .loadingDefaultPack=${this.loadingDefaultPack}
+          @load-default-pack=${this.onLoadDefaultPack}
+        ></sp-sample-bank>
       </main>
 
       ${this.keyboardOpen ? html`<sp-virtual-keyboard></sp-virtual-keyboard>` : nothing}
@@ -508,6 +517,22 @@ export class AppShell extends LitElement {
       // Clear all pitch data
       bankState.clearAllPitchData();
       this.showNotification('Pitch detection disabled — notes cleared');
+    }
+  }
+
+  private async onLoadDefaultPack(): Promise<void> {
+    this.loadingDefaultPack = true;
+    try {
+      const response = await fetch('./twinshot.zip');
+      if (!response.ok) throw new Error(`Download failed (${response.status})`);
+      const blob = await response.blob();
+      const file = new File([blob], 'twinshot.zip', { type: 'application/zip' });
+      await this.importZipFile(file);
+    } catch (err) {
+      console.error('Default pack load failed:', err);
+      this.showNotification('Failed to load default pack', true);
+    } finally {
+      this.loadingDefaultPack = false;
     }
   }
 

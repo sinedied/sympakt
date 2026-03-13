@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
@@ -20,6 +20,70 @@ export class SampleBank extends LitElement {
         display: block;
         flex: 1;
         overflow: hidden;
+      }
+
+      .empty-banner {
+        padding: 8px 8px 0;
+        flex-shrink: 0;
+      }
+
+      .load-default-btn {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: var(--slot-height);
+        padding: 4px 8px;
+        font-size: 9px;
+        letter-spacing: 2px;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        background: var(--accent-glow);
+        cursor: pointer;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .load-default-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 60%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(0, 204, 170, 0.25),
+          transparent
+        );
+        animation: shimmer 2.5s ease-in-out infinite;
+      }
+
+      .load-default-btn:hover {
+        box-shadow: 0 0 14px 4px var(--accent-glow);
+        color: #fff;
+      }
+
+      .load-default-btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+        animation: none;
+      }
+
+      .load-default-btn:disabled::before {
+        animation: none;
+      }
+
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 6px 1px var(--accent-glow); }
+        50% { box-shadow: 0 0 14px 4px var(--accent-glow); }
+      }
+
+      @keyframes shimmer {
+        0% { left: -100%; }
+        100% { left: 200%; }
       }
 
       .bank-list {
@@ -67,10 +131,31 @@ export class SampleBank extends LitElement {
   @property({ type: Boolean }) keyboardOpen = false;
   @property({ type: Number, reflect: true, attribute: 'max-columns' }) maxColumns = 4;
   @property({ type: Boolean }) extendedLofiModes = false;
+  @property({ type: Boolean }) loadingDefaultPack = false;
+
+  private static canShowDefaultPack(): boolean {
+    const host = location.hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host.endsWith('.github.io');
+  }
+
+  private onLoadDefaultPack(): void {
+    this.dispatchEvent(new CustomEvent('load-default-pack', { bubbles: true, composed: true }));
+  }
 
   override render() {
     const selectedIndex = bankState.selectedIndex;
+    const isEmpty = this.bankCtrl.slots.every((s) => s === null);
+    const showDefault = isEmpty && SampleBank.canShowDefaultPack();
     return html`
+      ${showDefault ? html`
+        <div class="empty-banner">
+          <button
+            class="load-default-btn"
+            @click=${this.onLoadDefaultPack}
+            ?disabled=${this.loadingDefaultPack}
+          >${this.loadingDefaultPack ? 'Loading...' : 'Load Twinshot sample pack'}</button>
+        </div>
+      ` : nothing}
       <div class="bank-list">
         ${this.bankCtrl.slots.map(
           (sample, i) => html`

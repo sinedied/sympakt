@@ -6,3 +6,4 @@ TODO
 *.env*
 docs/images/banner
 packs/
+public/twinshot.zip
