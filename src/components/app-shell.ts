@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { theme, sharedStyles, applyColorblindTheme } from '../styles/theme.js';
-import { iconHeart, iconGear, iconKeyboard } from '../icons.js';
+import { iconHeart, iconGear, iconKeyboard, iconMenu } from '../icons.js';
 import { bankState, BankStateController } from '../state/bank-state.js';
 import {
   exportSamplePack,
@@ -201,6 +201,52 @@ export class AppShell extends LitElement {
         border-color: var(--accent);
         color: #000;
       }
+
+      /* Mobile overflow menu */
+      .btn-menu {
+        padding: 4px 6px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .mobile-menu-anchor {
+        position: relative;
+      }
+
+      .mobile-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        min-width: 140px;
+      }
+
+      .mobile-menu button {
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+        text-align: left;
+        width: 100%;
+        padding: 10px 14px;
+      }
+
+      .mobile-menu button:last-child {
+        border-bottom: none;
+      }
+
+      @media (max-width: 480px) {
+        .btn-menu {
+          display: inline-flex;
+        }
+        .desktop-action {
+          display: none;
+        }
+      }
     `,
   ];
 
@@ -222,20 +268,24 @@ export class AppShell extends LitElement {
   @state() private colorblindTheme = false;
   @state() private extendedLofiModes = false;
   @state() private loadingDefaultPack = false;
+  @state() private mobileMenuOpen = false;
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
   private keydownHandler = this.onKeyDown.bind(this);
+  private closeMobileMenuHandler = this.closeMobileMenu.bind(this);
 
   override connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener('keydown', this.keydownHandler);
+    window.addEventListener('pointerdown', this.closeMobileMenuHandler);
     this.restoreSession();
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener('keydown', this.keydownHandler);
+    window.removeEventListener('pointerdown', this.closeMobileMenuHandler);
   }
 
   private async restoreSession(): Promise<void> {
@@ -284,7 +334,7 @@ export class AppShell extends LitElement {
           <button class="btn-settings" @click=${this.onOpenSettings} title="Settings">${iconGear}</button>
           <button class="btn-keyboard ${this.keyboardOpen ? 'active' : ''}" @click=${this.onToggleKeyboard} title="Virtual keyboard (P)">${iconKeyboard}</button>
           <button
-            class=${this.headerDragOver ? 'import-highlight' : ''}
+            class="desktop-action ${this.headerDragOver ? 'import-highlight' : ''}"
             @click=${this.onImportZip}
             ?disabled=${this.importing}
             title="Import a sample pack from a .zip file (or drag & drop here)"
@@ -292,16 +342,39 @@ export class AppShell extends LitElement {
             ${this.importing ? 'Importing...' : 'Import .zip'}
           </button>
           <button
-            class="primary"
+            class="desktop-action primary"
             @click=${this.onOpenExport}
             ?disabled=${filledSlots === 0 || this.exporting}
             title="Export the current bank as a .zip sample pack"
           >
             ${this.exporting ? 'Exporting...' : 'Export .zip'}
           </button>
-          <button class="danger" @click=${this.onClearAll} ?disabled=${filledSlots === 0} title="Remove all samples from the bank">
+          <button class="desktop-action danger" @click=${this.onClearAll} ?disabled=${filledSlots === 0} title="Remove all samples from the bank">
             Clear
           </button>
+          <div class="mobile-menu-anchor">
+            <button class="btn-menu" @click=${this.onToggleMobileMenu} title="Actions">${iconMenu}</button>
+            ${this.mobileMenuOpen ? html`
+              <div class="mobile-menu">
+                <button
+                  @click=${this.onMobileImport}
+                  ?disabled=${this.importing}
+                >
+                  ${this.importing ? 'Importing...' : 'Import .zip'}
+                </button>
+                <button
+                  class="primary"
+                  @click=${this.onMobileExport}
+                  ?disabled=${filledSlots === 0 || this.exporting}
+                >
+                  ${this.exporting ? 'Exporting...' : 'Export .zip'}
+                </button>
+                <button class="danger" @click=${this.onMobileClear} ?disabled=${filledSlots === 0}>
+                  Clear all
+                </button>
+              </div>
+            ` : nothing}
+          </div>
         </div>
       </header>
 
@@ -373,6 +446,35 @@ export class AppShell extends LitElement {
       this.zipInput = this.shadowRoot!.querySelector('input[type="file"]') as HTMLInputElement;
     }
     this.zipInput?.click();
+  }
+
+  private onToggleMobileMenu(e: Event): void {
+    e.stopPropagation();
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+  }
+
+  private closeMobileMenu(e: Event): void {
+    if (!this.mobileMenuOpen) return;
+    const path = e.composedPath();
+    const menu = this.shadowRoot?.querySelector('.mobile-menu-anchor');
+    if (menu && !path.includes(menu)) {
+      this.mobileMenuOpen = false;
+    }
+  }
+
+  private onMobileImport(): void {
+    this.mobileMenuOpen = false;
+    this.onImportZip();
+  }
+
+  private onMobileExport(): void {
+    this.mobileMenuOpen = false;
+    this.onOpenExport();
+  }
+
+  private onMobileClear(): void {
+    this.mobileMenuOpen = false;
+    this.onClearAll();
   }
 
   private async onZipFileSelected(e: Event): Promise<void> {

@@ -55,6 +55,13 @@ export const iconKeyboard = icon(svg`
   <rect x="13" y="5" width="3" height="8" fill="currentColor" stroke="none" />
 `);
 
+/** Vertical ellipsis menu icon */
+export const iconMenu = icon(svg`
+  <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+  <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+  <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
+`);
+
 /** Dual split icon (vertical divider) */
 export const iconSplit = icon(svg`
   <line x1="12" y1="3" x2="12" y2="21" stroke-width="2" />
