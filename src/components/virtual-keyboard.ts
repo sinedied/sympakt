@@ -26,14 +26,14 @@ function buildOctaveKeys(octave: number, baseSemitone: number): KeyDef[] {
 }
 
 /**
- * QWERTY key mapping on the home/middle row (A S D F G H J).
- * White keys: a=C, s=D, d=E, f=F, g=G, h=A, j=B
- * Black keys (top row): w=C#, e=D#, t=F#, y=G#, u=A#
- * Keys always map to the FIRST displayed octave only.
+ * QWERTY key mapping on the home/middle row (A S D F G H J K L).
+ * White keys: a=C, s=D, d=E, f=F, g=G, h=A, j=B, k=C+1, l=D+1
+ * Black keys (top row): w=C#, e=D#, t=F#, y=G#, u=A#, o=C#+1
+ * Keys always map to the FIRST displayed octave, with K/L/O extending into the second.
  */
 const QWERTY_TO_NOTE_INDEX: Record<string, number> = {
-  a: 0, s: 2, d: 4, f: 5, g: 7, h: 9, j: 11,
-  w: 1, e: 3, t: 6, y: 8, u: 10,
+  a: 0, s: 2, d: 4, f: 5, g: 7, h: 9, j: 11, k: 12, l: 14,
+  w: 1, e: 3, t: 6, y: 8, u: 10, o: 13,
 };
 
 const NOTE_INDEX_TO_KEY: Map<number, string> = new Map();
@@ -311,7 +311,7 @@ export class VirtualKeyboard extends LitElement {
 
   private renderWhiteKey(k: KeyDef, firstBase: number) {
     const idx = k.semitone - firstBase;
-    const binding = idx >= 0 && idx < 12 ? NOTE_INDEX_TO_KEY.get(idx) : undefined;
+    const binding = idx >= 0 && idx < 24 ? NOTE_INDEX_TO_KEY.get(idx) : undefined;
     const classes = 'white-key'
       + (this.activeKeys.has(k.semitone) ? ' active' : '')
       + (k.semitone === 0 ? ' root' : '');
@@ -363,7 +363,7 @@ export class VirtualKeyboard extends LitElement {
 
   private renderBlackKey(k: KeyDef, left: number, width: number, firstBase: number) {
     const idx = k.semitone - firstBase;
-    const binding = idx >= 0 && idx < 12 ? NOTE_INDEX_TO_KEY.get(idx) : undefined;
+    const binding = idx >= 0 && idx < 24 ? NOTE_INDEX_TO_KEY.get(idx) : undefined;
     const classes = 'black-key' + (this.activeKeys.has(k.semitone) ? ' active' : '');
     const style = `position:absolute;left:${left}px;width:${width}px`;
     return html`

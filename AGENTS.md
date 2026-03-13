@@ -260,7 +260,7 @@ npm run preview
 - **Octave shifting**: Left/Right arrow keys or ◀/▶ buttons shift the displayed 2-octave range (C0–B1 through C6–B7). Shifting stops all active notes.
 - **Sample navigation**: Up/Down arrow keys select the previous/next filled sample slot.
 - **Playback**: `playSamplePitchedFull(sample, semitones)` in `audio-engine.ts` renders the full sample including loop with crossfade, LOFI/XLOFI/SXLOFI/GXLOFI lowpass filter, and truncation to `getEffectiveMaxDuration(lofi)`. Uses `playbackRate = 2^(semitones/12)` for pitch shifting.
-- **QWERTY mapping**: middle row (A=C, S=D, D=E, F=F, G=G, H=A, J=B) for white keys, top row (W=C#, E=D#, T=F#, Y=G#, U=A#) for black keys. Shortcuts always map to the **first displayed octave** only. Keys in the second octave show no binding.
+- **QWERTY mapping**: middle row (A=C, S=D, D=E, F=F, G=G, H=A, J=B, K=C+1, L=D+1) for white keys, top row (W=C#, E=D#, T=F#, Y=G#, U=A#, O=C#+1) for black keys. Shortcuts map to the first displayed octave with K/L/O extending into the second.
 - **Touch/pointer support**: keys respond to `pointerdown`/`pointerup`/`pointerleave` with pointer capture for reliable mobile interaction. `touch-action: none` prevents scroll interference.
 - **Visual feedback**: pressed keys get `.active` class (accent color for white keys, accent-dim for black keys).
 - **Responsive**: white key width scales from 42px (desktop) → 32px (≤768px) → 24px (≤480px). Black key width is computed as 67% of white key width. Key binding labels hidden on mobile.
