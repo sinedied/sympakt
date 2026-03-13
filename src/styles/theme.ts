@@ -20,6 +20,7 @@ export const theme = css`
     --warning-dim: var(--sp-warning-dim, rgba(255, 136, 0, 0.3));
     --waveform-color: var(--sp-waveform-color, #00ccaa);
     --waveform-truncated: var(--sp-waveform-truncated, #ff8800);
+    --crossfade-color: var(--sp-crossfade-color, #508cff);
     --scrollbar-track: #141414;
     --scrollbar-thumb: #333333;
     --font-pixel: 'PixelFont', monospace;
@@ -40,6 +41,7 @@ export const colorblindThemeProperties: Record<string, string> = {
   '--sp-warning-dim': 'rgba(221, 187, 0, 0.3)',
   '--sp-waveform-color': '#5599ff',
   '--sp-waveform-truncated': '#ddbb00',
+  '--sp-crossfade-color': '#ff9944',
 };
 
 /** Apply or remove the colorblind theme on the document root */

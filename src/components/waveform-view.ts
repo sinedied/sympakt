@@ -46,7 +46,7 @@ export class WaveformView extends LitElement {
         transform: translateX(-50%);
         font-size: 9px;
         font-family: sans-serif;
-        color: rgba(100, 160, 255, 0.95);
+        color: var(--crossfade-color);
         white-space: nowrap;
         pointer-events: none;
       }
@@ -210,28 +210,30 @@ export class WaveformView extends LitElement {
     ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, 0.08)`;
     ctx.fillRect(startX, 0, endX - startX, height);
 
-    // Crossfade zone at end of loop (blue)
+    // Crossfade zone at end of loop
     const cfEndStartX = endX - crossfadeWidth;
+    const cfColor = getComputedStyle(this).getPropertyValue('--crossfade-color').trim() || '#508cff';
+    const [cr, cg, cb] = this.hexToRgb(cfColor);
     if (crossfadeWidth > 0) {
-      ctx.fillStyle = 'rgba(80, 140, 255, 0.18)';
+      ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
       ctx.fillRect(cfEndStartX, 0, crossfadeWidth, height);
     }
 
-    // Crossfade zone BEFORE loop start (source of fade-in audio, blue)
+    // Crossfade zone BEFORE loop start (source of fade-in audio)
     const cfPreStartX = startX - crossfadeWidth;
     if (crossfadeWidth > 0) {
-      ctx.fillStyle = 'rgba(80, 140, 255, 0.18)';
+      ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
       ctx.fillRect(Math.max(0, cfPreStartX), 0, crossfadeWidth - Math.max(0, -cfPreStartX), height);
     }
 
     // Crossfade handle line at end zone
     if (crossfadeWidth > 0) {
-      ctx.fillStyle = 'rgba(80, 140, 255, 0.6)';
+      ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.6)`;
       ctx.fillRect(cfEndStartX - 1, 0, 2, height);
     }
 
-    // Crossfade diamond handle at top (always visible, blue)
-    this.drawDiamond(ctx, cfEndStartX, 5, 4, 'rgba(100, 160, 255, 0.95)');
+    // Crossfade diamond handle at top (always visible)
+    this.drawDiamond(ctx, cfEndStartX, 5, 4, `rgba(${cr}, ${cg}, ${cb}, 0.95)`);
 
     // Update crossfade label position directly
     if (this.cfLabelEl) {
