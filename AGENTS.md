@@ -127,6 +127,7 @@ npm run preview
 - **Constraints**: loop duration ≤ 5s (≤ 10s in LOFI, ≤ 20s in XLOFI, ≤ 40s in SXLOFI, ≤ 80s in GXLOFI mode), crossfade ≤ loop length, crossfade ≤ available pre-start audio
 - **Playback preview**: looped playback with crossfade baked in via Web Audio API `AudioBufferSourceNode.loop`
 - **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s (10s in LOFI, 20s in XLOFI, 40s in SXLOFI, 80s in GXLOFI mode)
+- **Crossfade duration label**: while dragging the crossfade handle, a duration label (e.g. "320ms") is shown above the waveform, centered on the crossfade zone. **Important**: this label is an HTML element (`div.cf-label`) whose `left` and visibility are set imperatively from `drawLoopOverlay()` using the same pixel coordinates as the canvas overlay (`cfEndStartX + crossfadeWidth / 2`). Do NOT use Lit reactive state (`@state`) or percentage-based CSS positioning for this — the canvas overlay uses pixel coordinates on the actual element width, and Lit's render cycle introduces a one-frame lag that causes misalignment.
 - **ZIP roundtrip**: loop settings and LOFI mode are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
 
 ## Pitch Detection

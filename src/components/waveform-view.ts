@@ -65,6 +65,7 @@ export class WaveformView extends LitElement {
   @state() private dragTarget: DragTarget = null;
   private dragStartX = 0;
   private dragStartLoop: LoopSettings | null = null;
+  private cfLabelEl?: HTMLElement;
 
   private get effectiveMaxDuration(): number {
     if (this.effectiveMaxOverride !== null) return this.effectiveMaxOverride;
@@ -95,6 +96,7 @@ export class WaveformView extends LitElement {
   override updated(changed: PropertyValues): void {
     // Re-query overlay canvas since Lit may swap the element
     this.updateOverlayRef();
+    this.cfLabelEl = this.shadowRoot!.querySelector('.cf-label') as HTMLElement | undefined;
 
     if (changed.has('data') || changed.has('duration') || changed.has('truncated') || changed.has('lofi')) {
       this.drawWaveform();
@@ -231,8 +233,17 @@ export class WaveformView extends LitElement {
     // Crossfade diamond handle at top (always visible, blue)
     this.drawDiamond(ctx, cfEndStartX, 5, 4, 'rgba(100, 160, 255, 0.95)');
 
-    // Show crossfade duration label while dragging the crossfade handle
-    // (rendered as HTML element in render() method)
+    // Update crossfade label position directly
+    if (this.cfLabelEl) {
+      if (this.dragTarget === 'crossfade' && this.loop.crossfadeDuration > 0) {
+        const labelX = cfEndStartX + crossfadeWidth / 2;
+        this.cfLabelEl.style.left = `${labelX}px`;
+        this.cfLabelEl.textContent = `${(this.loop.crossfadeDuration * 1000).toFixed(0)}ms`;
+        this.cfLabelEl.style.display = '';
+      } else {
+        this.cfLabelEl.style.display = 'none';
+      }
+    }
 
     // Loop start handle
     ctx.fillStyle = accentColor;
@@ -456,18 +467,7 @@ export class WaveformView extends LitElement {
     }
   };
 
-  private get cfLabelPosition(): number | null {
-    if (!this.loop || this.dragTarget !== 'crossfade' || this.loop.crossfadeDuration <= 0) return null;
-    const fullDuration = this.duration;
-    if (fullDuration <= 0) return null;
-    const endFrac = this.loop.endTime / fullDuration;
-    const cfFrac = this.loop.crossfadeDuration / fullDuration;
-    // Center of the crossfade zone at the end of the loop
-    return (endFrac - cfFrac / 2) * 100;
-  }
-
   override render() {
-    const cfPos = this.cfLabelPosition;
     return html`
       <canvas></canvas>
       ${this.loopEnabled
@@ -477,11 +477,7 @@ export class WaveformView extends LitElement {
             @mousemove=${this.onOverlayMouseMove}
           ></canvas>`
         : html`<canvas class="loop-overlay"></canvas>`}
-      ${cfPos !== null
-        ? html`<div class="cf-label" style="left: ${cfPos}%">
-            ${(this.loop!.crossfadeDuration * 1000).toFixed(0)}ms
-          </div>`
-        : ''}
+      <div class="cf-label" style="display: none"></div>
     `;
   }
 }
