@@ -210,40 +210,81 @@ export class WaveformView extends LitElement {
     ctx.fillStyle = `rgba(${ar}, ${ag}, ${ab}, 0.08)`;
     ctx.fillRect(startX, 0, endX - startX, height);
 
-    // Crossfade zone at end of loop
-    const cfEndStartX = endX - crossfadeWidth;
+    // Crossfade zone visualization depends on crossfadeAtStart mode
     const cfColor = getComputedStyle(this).getPropertyValue('--crossfade-color').trim() || '#508cff';
     const [cr, cg, cb] = this.hexToRgb(cfColor);
-    if (crossfadeWidth > 0) {
-      ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
-      ctx.fillRect(cfEndStartX, 0, crossfadeWidth, height);
-    }
+    const cfAtStart = this.loop.crossfadeAtStart;
 
-    // Crossfade zone BEFORE loop start (source of fade-in audio)
-    const cfPreStartX = startX - crossfadeWidth;
-    if (crossfadeWidth > 0) {
-      ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
-      ctx.fillRect(Math.max(0, cfPreStartX), 0, crossfadeWidth - Math.max(0, -cfPreStartX), height);
-    }
+    if (cfAtStart) {
+      // Crossfade at START of loop
+      const cfStartEndX = startX + crossfadeWidth;
+      if (crossfadeWidth > 0) {
+        // Blue zone at start of loop (where crossfade is applied)
+        ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
+        ctx.fillRect(startX, 0, crossfadeWidth, height);
+      }
 
-    // Crossfade handle line at end zone
-    if (crossfadeWidth > 0) {
-      ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.6)`;
-      ctx.fillRect(cfEndStartX - 1, 0, 2, height);
-    }
+      // Source zone AFTER loop end (where crossfade audio comes from)
+      if (crossfadeWidth > 0) {
+        ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
+        const postEndWidth = Math.min(crossfadeWidth, width - endX);
+        ctx.fillRect(endX, 0, postEndWidth, height);
+      }
 
-    // Crossfade diamond handle at top (always visible)
-    this.drawDiamond(ctx, cfEndStartX, 5, 4, `rgba(${cr}, ${cg}, ${cb}, 0.95)`);
+      // Crossfade handle line at start zone
+      if (crossfadeWidth > 0) {
+        ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.6)`;
+        ctx.fillRect(cfStartEndX - 1, 0, 2, height);
+      }
 
-    // Update crossfade label position directly
-    if (this.cfLabelEl) {
-      if (this.dragTarget === 'crossfade' && this.loop.crossfadeDuration > 0) {
-        const labelX = cfEndStartX + crossfadeWidth / 2;
-        this.cfLabelEl.style.left = `${labelX}px`;
-        this.cfLabelEl.textContent = `${(this.loop.crossfadeDuration * 1000).toFixed(0)}ms`;
-        this.cfLabelEl.style.display = '';
-      } else {
-        this.cfLabelEl.style.display = 'none';
+      // Crossfade diamond handle at top
+      this.drawDiamond(ctx, cfStartEndX, 5, 4, `rgba(${cr}, ${cg}, ${cb}, 0.95)`);
+
+      // Update crossfade label position
+      if (this.cfLabelEl) {
+        if (this.dragTarget === 'crossfade' && this.loop.crossfadeDuration > 0) {
+          const labelX = startX + crossfadeWidth / 2;
+          this.cfLabelEl.style.left = `${labelX}px`;
+          this.cfLabelEl.textContent = `${(this.loop.crossfadeDuration * 1000).toFixed(0)}ms`;
+          this.cfLabelEl.style.display = '';
+        } else {
+          this.cfLabelEl.style.display = 'none';
+        }
+      }
+    } else {
+      // Crossfade at END of loop (default)
+      const cfEndStartX = endX - crossfadeWidth;
+      if (crossfadeWidth > 0) {
+        ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
+        ctx.fillRect(cfEndStartX, 0, crossfadeWidth, height);
+      }
+
+      // Crossfade zone BEFORE loop start (source of fade-in audio)
+      const cfPreStartX = startX - crossfadeWidth;
+      if (crossfadeWidth > 0) {
+        ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.18)`;
+        ctx.fillRect(Math.max(0, cfPreStartX), 0, crossfadeWidth - Math.max(0, -cfPreStartX), height);
+      }
+
+      // Crossfade handle line at end zone
+      if (crossfadeWidth > 0) {
+        ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, 0.6)`;
+        ctx.fillRect(cfEndStartX - 1, 0, 2, height);
+      }
+
+      // Crossfade diamond handle at top (always visible)
+      this.drawDiamond(ctx, cfEndStartX, 5, 4, `rgba(${cr}, ${cg}, ${cb}, 0.95)`);
+
+      // Update crossfade label position directly
+      if (this.cfLabelEl) {
+        if (this.dragTarget === 'crossfade' && this.loop.crossfadeDuration > 0) {
+          const labelX = cfEndStartX + crossfadeWidth / 2;
+          this.cfLabelEl.style.left = `${labelX}px`;
+          this.cfLabelEl.textContent = `${(this.loop.crossfadeDuration * 1000).toFixed(0)}ms`;
+          this.cfLabelEl.style.display = '';
+        } else {
+          this.cfLabelEl.style.display = 'none';
+        }
       }
     }
 
@@ -309,13 +350,18 @@ export class WaveformView extends LitElement {
     if (fullDuration <= 0) return null;
     const startPx = (this.loop.startTime / fullDuration) * rect.width;
     const endPx = (this.loop.endTime / fullDuration) * rect.width;
-    const cfPx = endPx - (this.loop.crossfadeDuration / fullDuration) * rect.width;
+    const cfWidthPx = (this.loop.crossfadeDuration / fullDuration) * rect.width;
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     const hitZone = 6;
 
+    // Crossfade handle position depends on mode
+    const cfHandlePx = this.loop.crossfadeAtStart
+      ? startPx + cfWidthPx   // handle at end of start crossfade zone
+      : endPx - cfWidthPx;    // handle at start of end crossfade zone
+
     // Crossfade handle at top — check first so it takes priority when overlapping end handle
-    if (Math.abs(x - cfPx) < hitZone && y < rect.height * 0.5) return 'crossfade';
+    if (Math.abs(x - cfHandlePx) < hitZone && y < rect.height * 0.5) return 'crossfade';
     if (Math.abs(x - startPx) < hitZone) return 'loop-start';
     if (Math.abs(x - endPx) < hitZone) return 'loop-end';
     if (x > startPx + hitZone && x < endPx - hitZone) return 'loop-region';
@@ -396,10 +442,19 @@ export class WaveformView extends LitElement {
       }
       case 'crossfade': {
         const loopLen = this.dragStartLoop.endTime - this.dragStartLoop.startTime;
-        let newCf = this.dragStartLoop.crossfadeDuration - dtRaw;
-        // Crossfade can't exceed the loop length or the available pre-start audio
-        const maxCf = Math.min(loopLen, this.dragStartLoop.startTime);
-        newCf = Math.max(0, Math.min(newCf, maxCf));
+        const cfAtStart = this.dragStartLoop.crossfadeAtStart;
+        let newCf: number;
+        if (cfAtStart) {
+          // Dragging right increases crossfade at start
+          newCf = this.dragStartLoop.crossfadeDuration + dtRaw;
+          const maxCf = Math.min(loopLen, audioDuration - this.dragStartLoop.endTime);
+          newCf = Math.max(0, Math.min(newCf, maxCf));
+        } else {
+          // Dragging left increases crossfade at end (original behavior)
+          newCf = this.dragStartLoop.crossfadeDuration - dtRaw;
+          const maxCf = Math.min(loopLen, this.dragStartLoop.startTime);
+          newCf = Math.max(0, Math.min(newCf, maxCf));
+        }
         newLoop = {
           ...this.dragStartLoop,
           crossfadeDuration: newCf,
@@ -423,12 +478,15 @@ export class WaveformView extends LitElement {
     // Ensure values stay in bounds
     newLoop.startTime = Math.max(0, newLoop.startTime);
     newLoop.endTime = Math.min(newLoop.endTime, audioDuration);
-    // Crossfade can't exceed available pre-start audio or the loop length
+    // Crossfade can't exceed available source audio or the loop length
     const finalLoopLen = newLoop.endTime - newLoop.startTime;
+    const maxCfSource = newLoop.crossfadeAtStart
+      ? audioDuration - newLoop.endTime  // post-end audio for crossfade at start
+      : newLoop.startTime;                // pre-start audio for crossfade at end
     newLoop.crossfadeDuration = Math.min(
       newLoop.crossfadeDuration,
       finalLoopLen,
-      newLoop.startTime,
+      maxCfSource,
     );
 
     this.dispatchEvent(

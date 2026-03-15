@@ -121,13 +121,19 @@ npm run preview
 - **Loop overlay**: interactive canvas overlay on the waveform with draggable handles
   - Green handles: loop start/end points (auto-snap to zero crossings)
   - Blue diamond at top: crossfade duration handle
-  - Blue zones: crossfade blend region at end of loop + source region before loop start
+  - Blue zones: crossfade blend region + source region (position depends on crossfade mode)
   - Dimmed regions: audio outside the loop
-- **Crossfade approach**: the tail of the loop is blended with audio from *before* the loop start point (not from the beginning of the loop). This produces a natural seamless transition when playback wraps.
-- **Constraints**: loop duration ≤ 5s (≤ 10s in LOFI, ≤ 20s in XLOFI, ≤ 40s in SXLOFI, ≤ 80s in GXLOFI mode), crossfade ≤ loop length, crossfade ≤ available pre-start audio
+- **Crossfade modes**: two modes, toggled via context menu when loop is enabled:
+  - **Crossfade at end** (default): the tail of the loop is blended with audio from *before* the loop start point. Blue zones appear at end of loop and before loop start. Constraint: crossfade ≤ available pre-start audio (`loop.startTime`).
+  - **Crossfade at start**: the beginning of the loop is blended with audio from *after* the loop end point. Blue zones appear at start of loop and after loop end. Constraint: crossfade ≤ available post-end audio (`audioDuration - loop.endTime`).
+- **Type**: `LoopSettings.crossfadeAtStart?: boolean` — `undefined`/`false` = crossfade at end (default), `true` = crossfade at start
+- **Context menu**: when loop is active, the sample name context menu shows "CROSSFADE AT START" or "CROSSFADE AT END" to toggle between modes. Available in both normal and dual split modes.
+- **Events**: `crossfade-position-toggle` (detail: `{ index }`) for main/A-side, `split-crossfade-position-toggle` (detail: `{ index }`) for B-side
+- **State**: `bankState.toggleCrossfadePosition(index)` and `bankState.toggleSplitCrossfadePosition(index)` handle the toggle and clamp crossfade duration to available source audio in the new direction
+- **Constraints**: loop duration ≤ 5s (≤ 10s in LOFI, ≤ 20s in XLOFI, ≤ 40s in SXLOFI, ≤ 80s in GXLOFI mode), crossfade ≤ loop length, crossfade ≤ available source audio (direction-dependent)
 - **Playback preview**: looped playback with crossfade baked in via Web Audio API `AudioBufferSourceNode.loop`
 - **Export**: looped samples export only the loop region with crossfade applied; non-looped samples truncated to 5s (10s in LOFI, 20s in XLOFI, 40s in SXLOFI, 80s in GXLOFI mode)
-- **Crossfade duration label**: while dragging the crossfade handle, a duration label (e.g. "320ms") is shown above the waveform, centered on the crossfade zone. **Important**: this label is an HTML element (`div.cf-label`) whose `left` and visibility are set imperatively from `drawLoopOverlay()` using the same pixel coordinates as the canvas overlay (`cfEndStartX + crossfadeWidth / 2`). Do NOT use Lit reactive state (`@state`) or percentage-based CSS positioning for this — the canvas overlay uses pixel coordinates on the actual element width, and Lit's render cycle introduces a one-frame lag that causes misalignment.
+- **Crossfade duration label**: while dragging the crossfade handle, a duration label (e.g. "320ms") is shown above the waveform, centered on the crossfade zone. **Important**: this label is an HTML element (`div.cf-label`) whose `left` and visibility are set imperatively from `drawLoopOverlay()` using the same pixel coordinates as the canvas overlay. Do NOT use Lit reactive state (`@state`) or percentage-based CSS positioning for this — the canvas overlay uses pixel coordinates on the actual element width, and Lit's render cycle introduces a one-frame lag that causes misalignment.
 - **ZIP roundtrip**: loop settings and LOFI mode are stored in metadata JSON and restored on import; original files (when included) are used for audio decoding on re-import
 
 ## Pitch Detection

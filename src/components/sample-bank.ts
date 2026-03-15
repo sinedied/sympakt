@@ -181,6 +181,8 @@ export class SampleBank extends LitElement {
               @split-sample-rename=${this.onSplitSampleRename}
               @sample-reverse=${this.onSampleReverse}
               @split-sample-reverse=${this.onSplitSampleReverse}
+              @crossfade-position-toggle=${this.onCrossfadePositionToggle}
+              @split-crossfade-position-toggle=${this.onSplitCrossfadePositionToggle}
             ></sp-sample-slot>
           `,
         )}
@@ -286,6 +288,14 @@ export class SampleBank extends LitElement {
 
   private onSplitSampleReverse(e: CustomEvent<{ index: number }>): void {
     bankState.reverseSplitSample(e.detail.index);
+  }
+
+  private onCrossfadePositionToggle(e: CustomEvent<{ index: number }>): void {
+    bankState.toggleCrossfadePosition(e.detail.index);
+  }
+
+  private onSplitCrossfadePositionToggle(e: CustomEvent<{ index: number }>): void {
+    bankState.toggleSplitCrossfadePosition(e.detail.index);
   }
 }
 

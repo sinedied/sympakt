@@ -45,7 +45,7 @@ async function exportDualSplitPCM(sample: Sample, speedFactor: number): Promise<
   if (sample.loop) {
     const sf = speedFactor;
     const loopA = isLofiActive(sample.lofi)
-      ? { startTime: sample.loop.startTime / sf, endTime: sample.loop.endTime / sf, crossfadeDuration: sample.loop.crossfadeDuration / sf }
+      ? { ...sample.loop, startTime: sample.loop.startTime / sf, endTime: sample.loop.endTime / sf, crossfadeDuration: sample.loop.crossfadeDuration / sf }
       : sample.loop;
     if (loopA.crossfadeDuration > 0) {
       pcmA = applyCrossfade(pcmA, loopA, exportBufferA.sampleRate);
@@ -69,7 +69,7 @@ async function exportDualSplitPCM(sample: Sample, speedFactor: number): Promise<
     if (sample.splitSample.loop) {
       const sf = speedFactor;
       const loopB = isLofiActive(sample.lofi)
-        ? { startTime: sample.splitSample.loop.startTime / sf, endTime: sample.splitSample.loop.endTime / sf, crossfadeDuration: sample.splitSample.loop.crossfadeDuration / sf }
+        ? { ...sample.splitSample.loop, startTime: sample.splitSample.loop.startTime / sf, endTime: sample.splitSample.loop.endTime / sf, crossfadeDuration: sample.splitSample.loop.crossfadeDuration / sf }
         : sample.splitSample.loop;
       if (loopB.crossfadeDuration > 0) {
         pcmB = applyCrossfade(pcmB, loopB, exportBufferB.sampleRate);
@@ -127,6 +127,7 @@ export async function exportSamplePack(
         const sf = speedFactor;
         const loopForExport = isLofiActive(sample.lofi)
           ? {
+              ...sample.loop,
               startTime: sample.loop.startTime / sf,
               endTime: sample.loop.endTime / sf,
               crossfadeDuration: sample.loop.crossfadeDuration / sf,

@@ -196,15 +196,27 @@ export function playSamplePitchedFull(
 
     const crossfadeSamples = Math.round(loop.crossfadeDuration * sampleRate);
     if (crossfadeSamples > 0 && crossfadeSamples <= loopLengthSamples) {
-      for (let i = 0; i < crossfadeSamples; i++) {
-        const fadeOut = 1 - i / crossfadeSamples;
-        const fadeIn = i / crossfadeSamples;
-        const endIdx = loopLengthSamples - crossfadeSamples + i;
-        const preStartIdx = loopStartSample - crossfadeSamples + i;
-        const preStartVal = (preStartIdx >= 0 && preStartIdx < srcData.length)
-          ? srcData[preStartIdx]
-          : 0;
-        loopPcm[endIdx] = loopPcm[endIdx] * fadeOut + preStartVal * fadeIn;
+      if (loop.crossfadeAtStart) {
+        for (let i = 0; i < crossfadeSamples; i++) {
+          const fadeIn = i / crossfadeSamples;
+          const fadeOut = 1 - i / crossfadeSamples;
+          const postEndIdx = loopEndSample + i;
+          const postEndVal = (postEndIdx >= 0 && postEndIdx < srcData.length)
+            ? srcData[postEndIdx]
+            : 0;
+          loopPcm[i] = loopPcm[i] * fadeIn + postEndVal * fadeOut;
+        }
+      } else {
+        for (let i = 0; i < crossfadeSamples; i++) {
+          const fadeOut = 1 - i / crossfadeSamples;
+          const fadeIn = i / crossfadeSamples;
+          const endIdx = loopLengthSamples - crossfadeSamples + i;
+          const preStartIdx = loopStartSample - crossfadeSamples + i;
+          const preStartVal = (preStartIdx >= 0 && preStartIdx < srcData.length)
+            ? srcData[preStartIdx]
+            : 0;
+          loopPcm[endIdx] = loopPcm[endIdx] * fadeOut + preStartVal * fadeIn;
+        }
       }
     }
 
@@ -286,19 +298,30 @@ export async function playSampleLooped(
     loopPcm[i] = idx < srcData.length ? srcData[idx] : 0;
   }
 
-  // Apply crossfade: blend tail of loop with audio BEFORE the start point
+  // Apply crossfade
   const crossfadeSamples = Math.round(loop.crossfadeDuration * sampleRate);
   if (crossfadeSamples > 0 && crossfadeSamples <= loopLengthSamples) {
-    for (let i = 0; i < crossfadeSamples; i++) {
-      const fadeOut = 1 - i / crossfadeSamples;
-      const fadeIn = i / crossfadeSamples;
-      const endIdx = loopLengthSamples - crossfadeSamples + i;
-      // Source from before the loop start (pre-start audio)
-      const preStartIdx = loopStartSample - crossfadeSamples + i;
-      const preStartSample = (preStartIdx >= 0 && preStartIdx < srcData.length)
-        ? srcData[preStartIdx]
-        : 0;
-      loopPcm[endIdx] = loopPcm[endIdx] * fadeOut + preStartSample * fadeIn;
+    if (loop.crossfadeAtStart) {
+      for (let i = 0; i < crossfadeSamples; i++) {
+        const fadeIn = i / crossfadeSamples;
+        const fadeOut = 1 - i / crossfadeSamples;
+        const postEndIdx = loopEndSample + i;
+        const postEndVal = (postEndIdx >= 0 && postEndIdx < srcData.length)
+          ? srcData[postEndIdx]
+          : 0;
+        loopPcm[i] = loopPcm[i] * fadeIn + postEndVal * fadeOut;
+      }
+    } else {
+      for (let i = 0; i < crossfadeSamples; i++) {
+        const fadeOut = 1 - i / crossfadeSamples;
+        const fadeIn = i / crossfadeSamples;
+        const endIdx = loopLengthSamples - crossfadeSamples + i;
+        const preStartIdx = loopStartSample - crossfadeSamples + i;
+        const preStartSample = (preStartIdx >= 0 && preStartIdx < srcData.length)
+          ? srcData[preStartIdx]
+          : 0;
+        loopPcm[endIdx] = loopPcm[endIdx] * fadeOut + preStartSample * fadeIn;
+      }
     }
   }
 
@@ -828,8 +851,10 @@ function mpmDetectWindow(
 
 /**
  * Apply a linear crossfade to a looped region of PCM data.
- * Blends the tail of the loop with audio from BEFORE the loop start point.
- * This creates a natural seamless transition when the loop wraps.
+ * When crossfadeAtStart is false/undefined (default): blends the tail of the loop
+ * with audio from BEFORE the loop start point.
+ * When crossfadeAtStart is true: blends the beginning of the loop
+ * with audio from AFTER the loop end point.
  * Returns a new Float32Array with the crossfade applied.
  */
 export function applyCrossfade(
@@ -847,21 +872,39 @@ export function applyCrossfade(
   const loopLength = loopEndSample - loopStartSample;
   if (crossfadeSamples > loopLength) return result;
 
-  // Apply crossfade at the end of the loop region:
-  // Fade out the last N samples of the loop, fade in N samples from before the start
-  for (let i = 0; i < crossfadeSamples; i++) {
-    const fadeOut = 1 - i / crossfadeSamples; // 1 → 0
-    const fadeIn = i / crossfadeSamples;       // 0 → 1
+  if (loop.crossfadeAtStart) {
+    // Crossfade at the START of the loop region:
+    // Fade in the first N samples of the loop, fade out N samples from after the end
+    for (let i = 0; i < crossfadeSamples; i++) {
+      const fadeIn = i / crossfadeSamples;       // 0 → 1
+      const fadeOut = 1 - i / crossfadeSamples;  // 1 → 0
 
-    const endIdx = loopEndSample - crossfadeSamples + i;
-    // Source from before the loop start
-    const preStartIdx = loopStartSample - crossfadeSamples + i;
-    const preStartSample = (preStartIdx >= 0 && preStartIdx < result.length)
-      ? pcm[preStartIdx]
-      : 0;
+      const startIdx = loopStartSample + i;
+      const postEndIdx = loopEndSample + i;
+      const postEndSample = (postEndIdx >= 0 && postEndIdx < pcm.length)
+        ? pcm[postEndIdx]
+        : 0;
 
-    if (endIdx >= 0 && endIdx < result.length) {
-      result[endIdx] = result[endIdx] * fadeOut + preStartSample * fadeIn;
+      if (startIdx >= 0 && startIdx < result.length) {
+        result[startIdx] = result[startIdx] * fadeIn + postEndSample * fadeOut;
+      }
+    }
+  } else {
+    // Crossfade at the END of the loop region (default):
+    // Fade out the last N samples of the loop, fade in N samples from before the start
+    for (let i = 0; i < crossfadeSamples; i++) {
+      const fadeOut = 1 - i / crossfadeSamples; // 1 → 0
+      const fadeIn = i / crossfadeSamples;       // 0 → 1
+
+      const endIdx = loopEndSample - crossfadeSamples + i;
+      const preStartIdx = loopStartSample - crossfadeSamples + i;
+      const preStartSample = (preStartIdx >= 0 && preStartIdx < result.length)
+        ? pcm[preStartIdx]
+        : 0;
+
+      if (endIdx >= 0 && endIdx < result.length) {
+        result[endIdx] = result[endIdx] * fadeOut + preStartSample * fadeIn;
+      }
     }
   }
 

@@ -38,7 +38,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Import samples** — drag audio files onto any slot, or click the **+** button to browse
 - **Reorder** — drag slots to rearrange the bank
 - **Preview** — click the play button on any slot to hear the sample
-- **Loop** — click the loop button to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade
+- **Loop** — click the loop button to enable loop mode; drag the green handles to set loop points and the blue diamond to adjust crossfade. Right-click the sample name to toggle between **crossfade at end** (default) and **crossfade at start**
 - **LOFI / XLOFI** — click **LO** to cycle through LOFI modes: off → LOFI (10s max, 2× speed) → XLOFI (20s max, 4× speed). Enable "Extended LOFI modes" in settings to add SXLOFI (40s max, 8× speed) and GXLOFI (80s max, 16× speed) to the cycle. On the Syntakt, pitch the sample down accordingly to hear the original sound.
 - **Remove** — click the × button to clear a slot (requires confirmation)
 - **Rename** — click a sample name and choose **RENAME** to edit the display name inline. Press Enter to confirm or Escape to cancel. Works in both normal and dual split modes.

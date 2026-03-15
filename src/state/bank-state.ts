@@ -78,10 +78,13 @@ class BankStateStore {
       const loopLen = loop.endTime - loop.startTime;
       if (loopLen > effectiveMax) {
         const newEnd = Math.min(loop.startTime + effectiveMax, sample.audioBuffer.duration);
+        const maxCfSource = loop.crossfadeAtStart
+          ? sample.audioBuffer.duration - newEnd
+          : loop.startTime;
         loop = {
           ...loop,
           endTime: newEnd,
-          crossfadeDuration: Math.min(loop.crossfadeDuration, newEnd - loop.startTime, loop.startTime),
+          crossfadeDuration: Math.min(loop.crossfadeDuration, newEnd - loop.startTime, maxCfSource),
         };
       }
     }
@@ -96,10 +99,13 @@ class BankStateStore {
         const bLoopLen = bLoop.endTime - bLoop.startTime;
         if (bLoopLen > splitMax) {
           const newEnd = Math.min(bLoop.startTime + splitMax, splitSample.audioBuffer.duration);
+          const bMaxCfSource = bLoop.crossfadeAtStart
+            ? splitSample.audioBuffer.duration - newEnd
+            : bLoop.startTime;
           bLoop = {
             ...bLoop,
             endTime: newEnd,
-            crossfadeDuration: Math.min(bLoop.crossfadeDuration, newEnd - bLoop.startTime, bLoop.startTime),
+            crossfadeDuration: Math.min(bLoop.crossfadeDuration, newEnd - bLoop.startTime, bMaxCfSource),
           };
         }
       }
@@ -155,10 +161,13 @@ class BankStateStore {
       const loopLen = loop.endTime - loop.startTime;
       if (loopLen > splitMaxDur) {
         const newEnd = Math.min(loop.startTime + splitMaxDur, sample.audioBuffer.duration);
+        const maxCfSource = loop.crossfadeAtStart
+          ? sample.audioBuffer.duration - newEnd
+          : loop.startTime;
         loop = {
           ...loop,
           endTime: newEnd,
-          crossfadeDuration: Math.min(loop.crossfadeDuration, newEnd - loop.startTime, loop.startTime),
+          crossfadeDuration: Math.min(loop.crossfadeDuration, newEnd - loop.startTime, maxCfSource),
         };
       }
     }
@@ -189,6 +198,45 @@ class BankStateStore {
     this.slots[index] = {
       ...sample,
       splitSample: { ...sample.splitSample, loop },
+    };
+    this.notify();
+  }
+
+  /** Toggle crossfade position (at start vs at end) for a sample's loop */
+  toggleCrossfadePosition(index: number): void {
+    const sample = this.slots[index];
+    if (!sample?.loop) return;
+    const atStart = !sample.loop.crossfadeAtStart;
+    // Clamp crossfade to available source audio in the new direction
+    const maxCf = atStart
+      ? sample.audioBuffer.duration - sample.loop.endTime  // post-end audio
+      : sample.loop.startTime;                              // pre-start audio
+    const loopLen = sample.loop.endTime - sample.loop.startTime;
+    const crossfadeDuration = Math.min(sample.loop.crossfadeDuration, loopLen, maxCf);
+    this.slots[index] = {
+      ...sample,
+      loop: { ...sample.loop, crossfadeAtStart: atStart, crossfadeDuration },
+    };
+    this.notify();
+  }
+
+  /** Toggle crossfade position for the B-side sample's loop */
+  toggleSplitCrossfadePosition(index: number): void {
+    const sample = this.slots[index];
+    if (!sample?.splitSample?.loop) return;
+    const split = sample.splitSample;
+    const atStart = !split.loop!.crossfadeAtStart;
+    const maxCf = atStart
+      ? split.audioBuffer.duration - split.loop!.endTime
+      : split.loop!.startTime;
+    const loopLen = split.loop!.endTime - split.loop!.startTime;
+    const crossfadeDuration = Math.min(split.loop!.crossfadeDuration, loopLen, maxCf);
+    this.slots[index] = {
+      ...sample,
+      splitSample: {
+        ...split,
+        loop: { ...split.loop!, crossfadeAtStart: atStart, crossfadeDuration },
+      },
     };
     this.notify();
   }
@@ -253,10 +301,14 @@ class BankStateStore {
       const duration = sample.duration;
       const newStart = duration - loop.endTime;
       const newEnd = duration - loop.startTime;
+      const maxCfSource = loop.crossfadeAtStart
+        ? duration - Math.min(duration, newEnd)
+        : Math.max(0, newStart);
       loop = {
+        ...loop,
         startTime: Math.max(0, newStart),
         endTime: Math.min(duration, newEnd),
-        crossfadeDuration: Math.min(loop.crossfadeDuration, Math.max(0, newStart)),
+        crossfadeDuration: Math.min(loop.crossfadeDuration, maxCfSource),
       };
     }
 
@@ -301,10 +353,14 @@ class BankStateStore {
       const duration = split.duration;
       const newStart = duration - loop.endTime;
       const newEnd = duration - loop.startTime;
+      const maxCfSource = loop.crossfadeAtStart
+        ? duration - Math.min(duration, newEnd)
+        : Math.max(0, newStart);
       loop = {
+        ...loop,
         startTime: Math.max(0, newStart),
         endTime: Math.min(duration, newEnd),
-        crossfadeDuration: Math.min(loop.crossfadeDuration, Math.max(0, newStart)),
+        crossfadeDuration: Math.min(loop.crossfadeDuration, maxCfSource),
       };
     }
 

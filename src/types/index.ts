@@ -81,6 +81,8 @@ export interface LoopSettings {
   endTime: number;
   /** Crossfade duration in seconds (0 = no crossfade, max = loop length) */
   crossfadeDuration: number;
+  /** When true, crossfade occurs at the start of the loop (blending with post-end audio) instead of at the end */
+  crossfadeAtStart?: boolean;
 }
 
 /** Metadata stored in the exported JSON file */

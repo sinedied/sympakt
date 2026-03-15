@@ -808,6 +808,7 @@ export class SampleSlot extends LitElement {
   }
 
   private renderSampleMenu() {
+    const loop = this.sample?.loop;
     return html`
       <div class="sample-menu" @click=${(e: Event) => e.stopPropagation()}>
         <button class="menu-item" @click=${() => this.startRename('main')}>
@@ -823,6 +824,11 @@ export class SampleSlot extends LitElement {
         <button class="menu-item" @click=${this.onReverseSample}>
           REVERSE
         </button>
+        ${loop ? html`
+          <button class="menu-item" @click=${() => this.onToggleCrossfadePosition('main')}>
+            ${loop.crossfadeAtStart ? 'CROSSFADE AT END' : 'CROSSFADE AT START'}
+          </button>
+        ` : nothing}
         <button class="menu-item" @click=${this.onToggleSplit}>
           ENABLE DUAL SAMPLE
         </button>
@@ -857,6 +863,7 @@ export class SampleSlot extends LitElement {
   }
 
   private renderSplitMenu(side: 'a' | 'b' = 'a') {
+    const loop = side === 'b' ? this.sample?.splitSample?.loop : this.sample?.loop;
     return html`
       <div class="sample-menu" @click=${(e: Event) => e.stopPropagation()}>
         <button class="menu-item" @click=${() => this.startRename(side)}>
@@ -865,6 +872,11 @@ export class SampleSlot extends LitElement {
         <button class="menu-item" @click=${() => side === 'b' ? this.onReverseSplitSample() : this.onReverseSample()}>
           REVERSE
         </button>
+        ${loop ? html`
+          <button class="menu-item" @click=${() => this.onToggleCrossfadePosition(side === 'b' ? 'split' : 'main')}>
+            ${loop.crossfadeAtStart ? 'CROSSFADE AT END' : 'CROSSFADE AT START'}
+          </button>
+        ` : nothing}
         ${side === 'a' ? html`
           <button class="menu-item" @click=${this.onToggleSplit}>
             DISABLE DUAL SAMPLE
@@ -1253,6 +1265,22 @@ export class SampleSlot extends LitElement {
     this.stopPlaybackB();
     this.dispatchEvent(
       new CustomEvent('split-sample-reverse', {
+        detail: { index: this.index },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onToggleCrossfadePosition(target: 'main' | 'split'): void {
+    this.sampleMenuOpen = false;
+    this.splitMenuOpen = false;
+    this.splitMenuOpenB = false;
+    this.stopPlayback();
+    if (target === 'split') this.stopPlaybackB();
+    const eventName = target === 'split' ? 'split-crossfade-position-toggle' : 'crossfade-position-toggle';
+    this.dispatchEvent(
+      new CustomEvent(eventName, {
         detail: { index: this.index },
         bubbles: true,
         composed: true,
