@@ -183,6 +183,12 @@ export class SampleEditor extends LitElement {
         min-height: 0;
       }
 
+      /* Compact/accordion mode when content overflows */
+      .controls-area.compact .accordion-header .chevron { display: inline; }
+      .controls-area.compact .accordion-header { cursor: pointer; }
+      .controls-area.compact .accordion-body { display: none; }
+      .controls-area.compact .accordion-body.open { display: block; }
+
       .accordion {
         border: 1px solid var(--border-color);
         margin-top: 8px;
@@ -505,11 +511,13 @@ export class SampleEditor extends LitElement {
   @state() private showCloseConfirm = false;
   @state() private displayWaveformData: number[] = [];
   @state() private fullscreen = false;
+  @state() private compactMode = false;
 
   private canvas?: HTMLCanvasElement;
   private sourceWaveformData: number[] = [];
   private stopPlaybackFn?: () => void;
   private resizeObserver?: ResizeObserver;
+  private controlsObserver?: ResizeObserver;
   private audioCtx?: AudioContext;
   private keydownHandler = this.onKeyDown.bind(this);
 
@@ -523,6 +531,7 @@ export class SampleEditor extends LitElement {
     window.removeEventListener('keydown', this.keydownHandler);
     this.stopPreview();
     this.resizeObserver?.disconnect();
+    this.controlsObserver?.disconnect();
   }
 
   override updated(changed: PropertyValues): void {
@@ -575,7 +584,25 @@ export class SampleEditor extends LitElement {
         this.resizeObserver.observe(this.canvas);
         this.drawWaveform();
       }
+      this.checkCompactMode();
     });
+  }
+
+  private checkCompactMode(): void {
+    const area = this.shadowRoot?.querySelector('.controls-area') as HTMLElement | null;
+    if (!area) return;
+    this.controlsObserver?.disconnect();
+    this.controlsObserver = new ResizeObserver(() => {
+      // Temporarily force all sections open to measure true content height
+      const bodies = area.querySelectorAll('.accordion-body');
+      bodies.forEach((b) => (b as HTMLElement).style.display = 'block');
+      const needsCompact = area.scrollHeight > area.clientHeight;
+      bodies.forEach((b) => (b as HTMLElement).style.display = '');
+      if (needsCompact !== this.compactMode) {
+        this.compactMode = needsCompact;
+      }
+    });
+    this.controlsObserver.observe(area);
   }
 
   private updateDisplayWaveform(): void {
@@ -1147,7 +1174,7 @@ export class SampleEditor extends LitElement {
             </div>
           </div>
 
-          <div class="controls-area">
+          <div class="controls-area ${this.compactMode ? 'compact' : ''}">
             <!-- Utility -->
             <div class="accordion">
               <button class="accordion-header" aria-expanded=${this.activeSection === 'utility' ? 'true' : 'false'}
