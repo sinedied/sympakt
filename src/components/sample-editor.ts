@@ -476,7 +476,7 @@ export class SampleEditor extends LitElement {
 
       .confirm-dialog p {
         font-family: var(--font-mono);
-        font-size: 9px;
+        font-size: 11px;
         color: var(--text-secondary);
         margin: 0 0 16px 0;
       }
