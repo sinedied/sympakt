@@ -219,15 +219,16 @@ export class SampleEditor extends LitElement {
       .controls-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
+        gap: 20px 12px;
+        align-items: flex-start;
       }
 
       .control-group {
         display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 2px;
         min-width: 80px;
+        margin-bottom: 4px;
       }
 
       .control-group label {
@@ -240,7 +241,7 @@ export class SampleEditor extends LitElement {
 
       .control-group input[type='range'] {
         width: 100px;
-        height: 18px;
+        height: 12px;
         -webkit-appearance: none;
         appearance: none;
         background: transparent;
@@ -257,11 +258,11 @@ export class SampleEditor extends LitElement {
       .control-group input[type='range']::-webkit-slider-thumb {
         -webkit-appearance: none;
         width: 10px;
-        height: 14px;
+        height: 16px;
         background: var(--accent);
         border: none;
         border-radius: 2px;
-        margin-top: -5.5px;
+        margin-top: -6.5px;
         background-image:
           linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.3) 80%, transparent 80%),
           linear-gradient(var(--accent), var(--accent));
