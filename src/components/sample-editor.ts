@@ -405,6 +405,14 @@ export class SampleEditor extends LitElement {
         gap: 8px;
       }
 
+      .editor-footer button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 22px;
+        box-sizing: border-box;
+      }
+
       .footer-left {
         display: flex;
         align-items: center;
@@ -417,6 +425,11 @@ export class SampleEditor extends LitElement {
         gap: 8px;
       }
 
+      .footer-left .slice-info {
+        display: flex;
+        align-items: center;
+      }
+
       .processing {
         font-family: var(--font-pixel);
         font-size: 7px;
@@ -425,7 +438,12 @@ export class SampleEditor extends LitElement {
         letter-spacing: 1px;
       }
 
-      .preview-label { margin-left: 4px; }
+      .preview-label {
+        margin-left: 4px;
+        line-height: 1;
+        position: relative;
+        top: 0.5px;
+      }
 
       .confirm-overlay {
         position: fixed;
@@ -512,6 +530,7 @@ export class SampleEditor extends LitElement {
   @state() private displayWaveformData: number[] = [];
   @state() private fullscreen = false;
   @state() private compactMode = false;
+  @state() private selectedSlice = -1;
 
   private canvas?: HTMLCanvasElement;
   private sourceWaveformData: number[] = [];
@@ -541,7 +560,7 @@ export class SampleEditor extends LitElement {
     if (changed.has('open') && !this.open) {
       this.stopPreview();
     }
-    if (changed.has('fx') || changed.has('sliceMarkers') || changed.has('displayWaveformData')) {
+    if (changed.has('fx') || changed.has('sliceMarkers') || changed.has('displayWaveformData') || changed.has('selectedSlice')) {
       this.drawWaveform();
     }
   }
@@ -552,6 +571,18 @@ export class SampleEditor extends LitElement {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
       e.preventDefault();
       this.onTogglePlayback();
+    }
+    // Arrow keys for slice navigation
+    if (this.slicerMode !== 'off' && this.getSliceCount() >= 2) {
+      if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        const count = this.getSliceCount();
+        this.selectedSlice = this.selectedSlice < count - 1 ? this.selectedSlice + 1 : 0;
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        const count = this.getSliceCount();
+        this.selectedSlice = this.selectedSlice > 0 ? this.selectedSlice - 1 : count - 1;
+      }
     }
   }
 
@@ -575,6 +606,7 @@ export class SampleEditor extends LitElement {
     this.isProcessing = false;
     this.showCloseConfirm = false;
     this.showSliceWarning = false;
+    this.selectedSlice = -1;
 
     requestAnimationFrame(() => {
       this.canvas = this.shadowRoot!.querySelector('.waveform-canvas') as HTMLCanvasElement;
@@ -638,6 +670,10 @@ export class SampleEditor extends LitElement {
     const waveColor = styles.getPropertyValue('--waveform-color').trim() || '#00ccaa';
     const dimColor = 'rgba(255,255,255,0.08)';
     const sliceColor = styles.getPropertyValue('--warning').trim() || '#ff8800';
+    const slh = sliceColor.replace('#', '');
+    const slR = parseInt(slh.substring(0, 2), 16);
+    const slG = parseInt(slh.substring(2, 4), 16);
+    const slB = parseInt(slh.substring(4, 6), 16);
     const crossfadeColor = styles.getPropertyValue('--crossfade-color').trim() || '#508cff';
     const cfh = crossfadeColor.replace('#', '');
     const cfR = parseInt(cfh.substring(0, 2), 16);
@@ -726,8 +762,25 @@ export class SampleEditor extends LitElement {
     ctx.fillRect(tsX, 0, hw, height);
     ctx.fillRect(teX - hw, 0, hw, height);
 
-    // Slice markers
-    if (this.sliceMarkers.length > 0) {
+    // Slice markers and selected slice highlight
+    if (this.sliceMarkers.length > 0 && duration > 0) {
+      const boundaries = this.getSliceBoundaries();
+
+      // Draw selected slice highlight
+      if (this.selectedSlice >= 0 && this.selectedSlice < boundaries.length - 1) {
+        const sliceStart = boundaries[this.selectedSlice];
+        const sliceEnd = boundaries[this.selectedSlice + 1];
+        const sx = (sliceStart / duration) * width;
+        const ex = (sliceEnd / duration) * width;
+        ctx.fillStyle = `rgba(${slR}, ${slG}, ${slB}, 0.12)`;
+        ctx.fillRect(sx, 0, ex - sx, height);
+        // Highlight borders
+        ctx.fillStyle = `rgba(${slR}, ${slG}, ${slB}, 0.3)`;
+        ctx.fillRect(sx, 0, 1 * dpr, height);
+        ctx.fillRect(ex - 1 * dpr, 0, 1 * dpr, height);
+      }
+
+      // Draw slice marker lines
       ctx.setLineDash([4 * dpr, 4 * dpr]);
       ctx.strokeStyle = sliceColor;
       ctx.lineWidth = 1.5 * dpr;
@@ -859,6 +912,8 @@ export class SampleEditor extends LitElement {
       if (existingIdx >= 0) {
         if (this.slicerMode === 'transient' || this.slicerMode === 'even') this.slicerMode = 'manual';
         this.sliceMarkers = this.sliceMarkers.filter((_, i) => i !== existingIdx);
+        const newCount = this.getSliceCount();
+        if (this.selectedSlice >= newCount) this.selectedSlice = Math.max(0, newCount - 1);
         return;
       }
       if (this.slicerMode === 'manual' || this.slicerMode === 'transient') {
@@ -966,18 +1021,28 @@ export class SampleEditor extends LitElement {
 
   private onSlicerModeChange(mode: SlicerMode): void {
     this.slicerMode = mode;
+    this.selectedSlice = -1;
     if (mode === 'off' || mode === 'manual') this.sliceMarkers = [];
-    else this.updateSliceMarkers();
+    else {
+      this.updateSliceMarkers();
+      if (this.sliceMarkers.length > 0) this.selectedSlice = 0;
+    }
   }
 
   private onSlicerSensitivityChange(e: Event): void {
     this.slicerSensitivity = parseFloat((e.target as HTMLInputElement).value);
-    if (this.slicerMode === 'transient') this.updateSliceMarkers();
+    if (this.slicerMode === 'transient') {
+      this.updateSliceMarkers();
+      if (this.selectedSlice >= this.getSliceCount()) this.selectedSlice = Math.max(0, this.getSliceCount() - 1);
+    }
   }
 
   private onSlicerCountChange(count: number): void {
     this.slicerCount = count;
-    if (this.slicerMode === 'even') this.updateSliceMarkers();
+    if (this.slicerMode === 'even') {
+      this.updateSliceMarkers();
+      if (this.selectedSlice >= this.getSliceCount()) this.selectedSlice = Math.max(0, this.getSliceCount() - 1);
+    }
   }
 
   // --- Preview ---
@@ -987,7 +1052,19 @@ export class SampleEditor extends LitElement {
     if (!this.sample) return;
     this.isProcessing = true;
     try {
-      const processed = await applyEffectChain(this.sample.audioBuffer, this.fx);
+      let processed: AudioBuffer;
+      // If a slice is selected, play only that slice
+      if (this.selectedSlice >= 0 && this.slicerMode !== 'off' && this.getSliceCount() >= 2) {
+        const boundaries = this.getSliceBoundaries();
+        if (this.selectedSlice < boundaries.length - 1) {
+          const sliceOpts = { ...this.fx, trimStart: boundaries[this.selectedSlice], trimEnd: boundaries[this.selectedSlice + 1] };
+          processed = await applyEffectChain(this.sample.audioBuffer, sliceOpts);
+        } else {
+          processed = await applyEffectChain(this.sample.audioBuffer, this.fx);
+        }
+      } else {
+        processed = await applyEffectChain(this.sample.audioBuffer, this.fx);
+      }
       if (!this.audioCtx) this.audioCtx = new AudioContext();
       const source = this.audioCtx.createBufferSource();
       source.buffer = processed;
@@ -1329,10 +1406,18 @@ export class SampleEditor extends LitElement {
 
           <div class="editor-footer">
             <div class="footer-left">
-              <button @click=${this.onTogglePlayback} ?disabled=${this.isProcessing} title="Preview (Space)">
+              <button @click=${this.onTogglePlayback} ?disabled=${this.isProcessing}
+                title="Preview (Space)">
                 ${this.isPlaying ? iconStop : iconPlay}
-                <span class="preview-label">${this.isPlaying ? 'Stop' : 'Preview'}</span>
+                <span class="preview-label">Preview</span>
               </button>
+              ${this.slicerMode !== 'off' && sliceCount >= 2 ? html`
+                <button @click=${() => { this.selectedSlice = this.selectedSlice > 0 ? this.selectedSlice - 1 : sliceCount - 1; }}
+                  ?disabled=${this.isProcessing} title="Previous slice (←)">◀</button>
+                <button @click=${() => { this.selectedSlice = this.selectedSlice < sliceCount - 1 ? this.selectedSlice + 1 : 0; }}
+                  ?disabled=${this.isProcessing} title="Next slice (→)">▶</button>
+                <span class="slice-info">${this.selectedSlice >= 0 ? `Slice ${this.selectedSlice + 1}/${sliceCount}` : `${sliceCount} slices`}</span>
+              ` : nothing}
               ${this.isProcessing ? html`<span class="processing">Processing...</span>` : nothing}
             </div>
             <div class="footer-right">
