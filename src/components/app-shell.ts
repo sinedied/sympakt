@@ -9,12 +9,17 @@ import {
   downloadBlob,
 } from '../services/zip-service.js';
 import { loadSettings, saveSettings } from '../services/persistence.js';
-import type { ExportOptions } from '../types/index.js';
+import type { ExportOptions, Sample, SplitSample } from '../types/index.js';
+import { MAX_SLOTS } from '../types/index.js';
 import { detectPitchWithDebug } from '../services/audio-engine.js';
+import { encodeWav } from '../services/wav-encoder.js';
+import { zipSync } from 'fflate';
 import './sample-bank.js';
 import './export-dialog.js';
 import './settings-dialog.js';
 import './virtual-keyboard.js';
+import './sample-editor.js';
+import type { SampleEditor } from './sample-editor.js';
 
 /**
  * Main application shell.
@@ -269,6 +274,10 @@ export class AppShell extends LitElement {
   @state() private extendedLofiModes = false;
   @state() private loadingDefaultPack = false;
   @state() private mobileMenuOpen = false;
+  @state() private editorOpen = false;
+  @state() private editorSample: Sample | SplitSample | null = null;
+  @state() private editorSlotIndex = 0;
+  @state() private editorSide: 'main' | 'a' | 'b' = 'main';
 
   private notificationTimer?: ReturnType<typeof setTimeout>;
   private zipInput?: HTMLInputElement;
@@ -387,6 +396,7 @@ export class AppShell extends LitElement {
           .extendedLofiModes=${this.extendedLofiModes}
           .loadingDefaultPack=${this.loadingDefaultPack}
           @load-default-pack=${this.onLoadDefaultPack}
+          @sample-edit=${this.onSampleEdit}
         ></sp-sample-bank>
       </main>
 
@@ -422,6 +432,19 @@ export class AppShell extends LitElement {
         @extended-lofi-toggle=${this.onExtendedLofiToggle}
         @max-columns-change=${this.onMaxColumnsChange}
       ></sp-settings-dialog>
+
+      <sp-sample-editor
+        ?open=${this.editorOpen}
+        .sample=${this.editorSample}
+        .slotIndex=${this.editorSlotIndex}
+        .side=${this.editorSide}
+        @dialog-close=${() => (this.editorOpen = false)}
+        @editor-apply=${this.onEditorApply}
+        @editor-cancel=${() => (this.editorOpen = false)}
+        @editor-check-slots=${this.onEditorCheckSlots}
+        @editor-export-slices-to-slots=${this.onEditorExportSlicesToSlots}
+        @editor-export-slices-zip=${this.onEditorExportSlicesZip}
+      ></sp-sample-editor>
 
       ${this.notification
         ? html`<div class="notification ${this.notification.error ? 'error' : ''}">
@@ -677,6 +700,157 @@ export class AppShell extends LitElement {
       colorblindTheme: this.colorblindTheme,
       extendedLofiModes: this.extendedLofiModes,
     }).catch((err) => console.warn('Failed to persist settings:', err));
+  }
+
+  // --- Sample Editor ---
+
+  private onSampleEdit(e: CustomEvent<{ index: number; side: 'main' | 'a' | 'b' }>): void {
+    const { index, side } = e.detail;
+    const slot = bankState.getSlot(index);
+    if (!slot) return;
+
+    let sample: Sample | SplitSample | null = null;
+    if (side === 'b' && slot.splitSample) {
+      sample = slot.splitSample;
+    } else {
+      sample = slot;
+    }
+    if (!sample) return;
+
+    this.editorSample = sample;
+    this.editorSlotIndex = index;
+    this.editorSide = side;
+    this.editorOpen = true;
+  }
+
+  private onEditorApply(e: CustomEvent<{
+    audioBuffer: AudioBuffer;
+    waveformData: number[];
+    duration: number;
+    slotIndex: number;
+    side: 'main' | 'a' | 'b';
+  }>): void {
+    const { audioBuffer, waveformData, duration, slotIndex, side } = e.detail;
+    const slot = bankState.getSlot(slotIndex);
+    if (!slot) return;
+
+    if (side === 'b' && slot.splitSample) {
+      const updatedSplit = {
+        ...slot.splitSample,
+        audioBuffer,
+        waveformData,
+        duration,
+        isTruncated: false,
+        loop: null,
+        reversed: false,
+      };
+      bankState.setSplitSample(slotIndex, updatedSplit);
+    } else {
+      const updatedSample: Sample = {
+        ...slot,
+        audioBuffer,
+        waveformData,
+        duration,
+        isTruncated: false,
+        loop: null,
+        reversed: false,
+      };
+      bankState.setSample(slotIndex, updatedSample);
+    }
+
+    this.showNotification('Sample updated');
+
+    // Update the editor's sample reference so it stays in sync
+    if (side === 'b' && slot.splitSample) {
+      this.editorSample = { ...slot.splitSample, audioBuffer, waveformData, duration, isTruncated: false, loop: null, reversed: false };
+    } else {
+      this.editorSample = { ...slot, audioBuffer, waveformData, duration, isTruncated: false, loop: null, reversed: false };
+    }
+  }
+
+  private onEditorCheckSlots(e: CustomEvent<{ slotIndex: number; sliceCount: number }>): void {
+    const { slotIndex, sliceCount } = e.detail;
+    const slots = this.bankCtrl.slots;
+    const availableSlots = MAX_SLOTS - slotIndex;
+    const occupiedCount = slots.slice(slotIndex, slotIndex + sliceCount).filter((s) => s !== null).length;
+
+    const editor = this.shadowRoot!.querySelector('sp-sample-editor') as SampleEditor | null;
+    if (!editor) return;
+
+    const warnings: string[] = [];
+    if (sliceCount > availableSlots) {
+      warnings.push(`Only ${availableSlots} slots available from slot ${slotIndex + 1}. ${sliceCount - availableSlots} slices will be skipped.`);
+    }
+    if (occupiedCount > 0) {
+      warnings.push(`${occupiedCount} slot${occupiedCount > 1 ? 's' : ''} already contain samples and will be overwritten.`);
+    }
+
+    if (warnings.length > 0) {
+      editor.showSlotWarning(warnings.join(' '));
+    } else {
+      editor.proceedSliceExport();
+    }
+  }
+
+  private onEditorExportSlicesToSlots(e: CustomEvent<{
+    slotIndex: number;
+    slices: Array<{
+      audioBuffer: AudioBuffer;
+      waveformData: number[];
+      duration: number;
+      name: string;
+    }>;
+  }>): void {
+    const { slotIndex, slices } = e.detail;
+
+    for (let i = 0; i < slices.length; i++) {
+      const targetSlot = slotIndex + i;
+      if (targetSlot >= MAX_SLOTS) break;
+
+      const slice = slices[i];
+      const sample: Sample = {
+        id: crypto.randomUUID(),
+        name: slice.name,
+        originalFileName: `${slice.name}.wav`,
+        audioBuffer: slice.audioBuffer,
+        waveformData: slice.waveformData,
+        duration: slice.duration,
+        isTruncated: false,
+        originalFile: new Uint8Array(0),
+        loop: null,
+        lofi: 'off',
+        detectedNote: null,
+      };
+      bankState.setSample(targetSlot, sample);
+    }
+
+    this.editorOpen = false;
+    this.showNotification(`${Math.min(slices.length, MAX_SLOTS - slotIndex)} slices exported to slots`);
+  }
+
+  private onEditorExportSlicesZip(e: CustomEvent<{
+    sampleName: string;
+    slices: AudioBuffer[];
+  }>): void {
+    const { sampleName, slices } = e.detail;
+
+    try {
+      const files: Record<string, Uint8Array> = {};
+      for (let i = 0; i < slices.length; i++) {
+        const pcm = slices[i].getChannelData(0);
+        const wav = encodeWav(pcm);
+        const filename = `${sampleName}_${String(i + 1).padStart(2, '0')}.wav`;
+        files[filename] = new Uint8Array(wav);
+      }
+
+      const zipped = zipSync(files);
+      const blob = new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' });
+      downloadBlob(blob, `${sampleName}_slices.zip`);
+      this.showNotification(`${slices.length} slices exported`);
+    } catch (err) {
+      console.error('Slice ZIP export failed:', err);
+      this.showNotification('Failed to export slices', true);
+    }
   }
 }
 

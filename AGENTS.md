@@ -18,13 +18,16 @@ src/
 ├── components/       # Lit web components
 │   ├── app-shell.ts        # Main application shell
 │   ├── sample-bank.ts      # 64-slot scrollable bank with drag & drop
+│   ├── sample-editor.ts    # Destructive sample editor modal (trim, FX, slicer)
 │   ├── sample-slot.ts      # Individual sample slot
 │   ├── waveform-view.ts    # Pixelated waveform preview canvas
 │   ├── virtual-keyboard.ts # 2-octave chromatic keyboard for sample auditioning
 │   └── export-dialog.ts    # Export options dialog
 ├── services/
+│   ├── audio-effects.ts    # Audio DSP: trim, reverse, fade, normalize, gain, bitcrush, filter
 │   ├── audio-engine.ts     # Web Audio API: decode, resample, preview, analyze
 │   ├── persistence.ts      # IndexedDB session persistence (bank + settings)
+│   ├── transient-detection.ts # Transient onset detection & even slicing utilities
 │   ├── wav-encoder.ts      # Encode PCM data to 16-bit/48kHz/mono WAV
 │   ├── wav-decoder.ts      # Decode WAV files
 │   └── zip-service.ts      # ZIP import/export using fflate
@@ -209,6 +212,30 @@ npm run preview
 - **Persistence**: `reversed` is stored in IndexedDB via `StoredSample` / `StoredSplitSample` and restored on page reload
 - **Metadata**: `reversed` field included in `SlotMetadata` and split sample metadata in exported `sympakt.json`
 - **ZIP roundtrip**: `reversed` flag is stored in metadata JSON; on re-import, the audio buffer already contains the reversed data, and the flag is restored
+
+## Sample Editor
+
+- **Purpose**: allows users to perform destructive edits on a sample (overwriting the original audio buffer) via a full-featured modal editor
+- **Trigger**: click a sample name to open the context menu, then choose **EDIT SAMPLE**. Available in both normal mode and dual split mode (A and B sides).
+- **Component**: `src/components/sample-editor.ts` (`<sp-sample-editor>`)
+- **Modal behavior**: follows the dialog pattern (`:host([open])`, overlay, dialog). **Cannot be dismissed by clicking outside** — user must explicitly click Apply or Cancel.
+- **Layout** (top to bottom):
+  - Header with "Edit Sample" title and sample name/duration
+  - Large waveform canvas (~160px) with trim handles (draggable white vertical bars) and dashed slice markers. Dimmed regions outside trim = audio to be cut.
+  - Time display (start/trimmed/end)
+  - Transport bar with Play/Stop preview button (renders effects offline via `OfflineAudioContext`, then plays)
+  - Effects section: Reverse toggle, Normalize toggle, Fade In (0–2s slider), Fade Out (0–2s slider), Gain (-24 to +24 dB)
+  - Audio FX section: Sample Rate Reduction (48kHz→1kHz), Bit Reduction (16→1 bit), Filter Toggle + Type (LP/HP/BP), Cutoff (20–20kHz log), Resonance (0–30 Q)
+  - Slicer section: mode (Transient/Even/Manual), sensitivity (transient), slice count (even, 2–64), click-to-add (manual), Export buttons ("To Slots"/"Download ZIP")
+  - Footer with Cancel/Apply buttons
+- **Audio DSP service**: `src/services/audio-effects.ts` provides pure functions:
+  - `trimAudio(buffer, startTime, endTime)`, `reverseAudio(buffer)`, `fadeIn(buffer, duration)`, `fadeOut(buffer, duration)`, `normalizeAudio(buffer)`, `applyGain(buffer, gainDb)`, `reduceSampleRate(buffer, targetRate)`, `reduceBitDepth(buffer, bits)`, `applyFilter(buffer, type, cutoff, resonance)`, `applyEffectChain(buffer, options)` — all return new AudioBuffer instances
+- **Transient detection**: `src/services/transient-detection.ts` — `detectTransients(buffer, sensitivity)` uses energy-based onset detection with adaptive threshold; `createEvenSlices(duration, numSlices)` returns evenly spaced cut points
+- **On Apply**: processed audio replaces `Sample.audioBuffer`, `waveformData`, and `duration`; loop settings are cleared (since audio boundaries changed); `reversed` flag is reset
+- **Slicer export to slots**: slices audio at boundary points, creates Sample objects, fills bank slots starting from the source slot index. Shows warning if slots are occupied or insufficient — user can cancel or continue (overwriting).
+- **Slicer export to ZIP**: encodes each slice as 16-bit/48kHz/mono WAV, bundles into `<name>_slices.zip` via fflate, triggers download
+- **Events**: `sample-edit` (detail: `{ index, side }`) dispatched from slot/bank, `editor-apply`, `editor-cancel`, `editor-check-slots`, `editor-export-slices-to-slots`, `editor-export-slices-zip`
+- **State flow**: `AppShell.editorOpen/editorSample/editorSlotIndex/editorSide` → `<sp-sample-editor>` properties → on Apply: `bankState.setSample()` or `bankState.setSplitSample()`
 
 ## Max Columns Setting
 

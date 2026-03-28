@@ -829,6 +829,9 @@ export class SampleSlot extends LitElement {
             ${loop.crossfadeAtStart ? 'CROSSFADE AT END' : 'CROSSFADE AT START'}
           </button>
         ` : nothing}
+        <button class="menu-item" @click=${() => this.onEditSample('main')}>
+          EDIT SAMPLE
+        </button>
         <button class="menu-item" @click=${this.onToggleSplit}>
           ENABLE DUAL SAMPLE
         </button>
@@ -877,6 +880,9 @@ export class SampleSlot extends LitElement {
             ${loop.crossfadeAtStart ? 'CROSSFADE AT END' : 'CROSSFADE AT START'}
           </button>
         ` : nothing}
+        <button class="menu-item" @click=${() => this.onEditSample(side === 'b' ? 'b' : 'a')}>
+          EDIT SAMPLE
+        </button>
         ${side === 'a' ? html`
           <button class="menu-item" @click=${this.onToggleSplit}>
             DISABLE DUAL SAMPLE
@@ -1254,6 +1260,21 @@ export class SampleSlot extends LitElement {
     this.dispatchEvent(
       new CustomEvent('sample-reverse', {
         detail: { index: this.index },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onEditSample(side: 'main' | 'a' | 'b'): void {
+    this.sampleMenuOpen = false;
+    this.splitMenuOpen = false;
+    this.splitMenuOpenB = false;
+    this.pitchSubmenuOpen = false;
+    this.stopPlayback();
+    this.dispatchEvent(
+      new CustomEvent('sample-edit', {
+        detail: { index: this.index, side },
         bubbles: true,
         composed: true,
       }),

@@ -70,19 +70,21 @@ export function generateWaveformData(
   buffer: AudioBuffer,
   columns: number = WAVEFORM_COLUMNS,
 ): number[] {
-  // Mix down to mono if needed
   const channelData = buffer.getChannelData(0);
-  const samplesPerColumn = Math.floor(channelData.length / columns);
+  if (channelData.length === 0) return new Array(columns).fill(0);
+
   const waveform: number[] = [];
 
   for (let col = 0; col < columns; col++) {
-    const start = col * samplesPerColumn;
-    const end = Math.min(start + samplesPerColumn, channelData.length);
+    // Map each column to a range within the buffer (may overlap for short buffers)
+    const start = Math.floor((col / columns) * channelData.length);
+    const end = Math.max(start + 1, Math.floor(((col + 1) / columns) * channelData.length));
+    const clampedEnd = Math.min(end, channelData.length);
     let sumSq = 0;
-    for (let i = start; i < end; i++) {
+    for (let i = start; i < clampedEnd; i++) {
       sumSq += channelData[i] * channelData[i];
     }
-    const rms = Math.sqrt(sumSq / (end - start));
+    const rms = Math.sqrt(sumSq / (clampedEnd - start));
     waveform.push(Math.min(rms * 3, 1)); // scale up for visibility, clamp to 1
   }
 

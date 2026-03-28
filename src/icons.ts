@@ -69,6 +69,34 @@ export const iconSplit = icon(svg`
   <polyline points="16,7 20,12 16,17" fill="none" />
 `);
 
+/** Scissors */
+export const iconScissors = icon(svg`
+  <circle cx="6" cy="18" r="3" fill="none" />
+  <circle cx="18" cy="18" r="3" fill="none" />
+  <line x1="8.5" y1="16" x2="17" y2="4" />
+  <line x1="15.5" y1="16" x2="7" y2="4" />
+`);
+
+/** Edit / pencil */
+export const iconEdit = icon(svg`
+  <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+`);
+
+/** Download arrow */
+export const iconDownload = icon(svg`
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+  <polyline points="7 10 12 15 17 10" />
+  <line x1="12" y1="15" x2="12" y2="3" />
+`);
+
+/** Grid / slots */
+export const iconGrid = icon(svg`
+  <rect x="3" y="3" width="7" height="7" />
+  <rect x="14" y="3" width="7" height="7" />
+  <rect x="3" y="14" width="7" height="7" />
+  <rect x="14" y="14" width="7" height="7" />
+`);
+
 /** Heart (filled, pixel art) */
 export const iconHeart = svg`
   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 9 9"
