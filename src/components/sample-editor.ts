@@ -6,7 +6,7 @@ import { applyEffectChain, reverseAudio, normalizeAudio, applyGain } from '../se
 import { detectTransients, createEvenSlices } from '../services/transient-detection.js';
 import { EXPORT_SAMPLE_RATE, WAVEFORM_COLUMNS } from '../types/index.js';
 import type { Sample, SplitSample } from '../types/index.js';
-import { iconPlay, iconStop, iconDownload, iconGrid } from '../icons.js';
+import { iconPlay, iconStop, iconDownload, iconGrid, iconExpand, iconContract } from '../icons.js';
 
 type SlicerMode = 'off' | 'transient' | 'even' | 'manual';
 type DragTarget = 'trim-start' | 'trim-end' | 'fade-in' | 'fade-out' | null;
@@ -81,12 +81,18 @@ export class SampleEditor extends LitElement {
       .dialog {
         background: var(--bg-secondary);
         border: 1px solid var(--border-color);
-        width: calc(100vw - 32px);
-        height: calc(100vh - 32px);
-        height: calc(100dvh - 32px);
+        width: min(900px, calc(100vw - 32px));
+        height: min(90vh, calc(100vh - 32px));
+        height: min(90dvh, calc(100dvh - 32px));
         display: flex;
         flex-direction: column;
         overflow: hidden;
+      }
+
+      .dialog.fullscreen {
+        width: calc(100vw - 32px);
+        height: calc(100vh - 32px);
+        height: calc(100dvh - 32px);
       }
 
       .editor-header {
@@ -96,6 +102,23 @@ export class SampleEditor extends LitElement {
         padding: 12px 16px;
         border-bottom: 1px solid var(--border-color);
         flex-shrink: 0;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-expand {
+        padding: 4px 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn-expand:active {
+        transform: none;
       }
 
       h2 {
@@ -441,11 +464,12 @@ export class SampleEditor extends LitElement {
       }
 
       @media (max-width: 600px) {
-        .dialog {
+        .dialog, .dialog.fullscreen {
           width: 100vw;
           height: 100vh;
           height: 100dvh;
         }
+        .btn-expand { display: none; }
         .waveform-area { height: 120px; }
         .control-group input[type='range'] { width: 70px; }
         .preview-label { display: none; }
@@ -480,6 +504,7 @@ export class SampleEditor extends LitElement {
   @state() private sliceWarningMessage = '';
   @state() private showCloseConfirm = false;
   @state() private displayWaveformData: number[] = [];
+  @state() private fullscreen = false;
 
   private canvas?: HTMLCanvasElement;
   private sourceWaveformData: number[] = [];
@@ -1095,9 +1120,14 @@ export class SampleEditor extends LitElement {
 
     return html`
       <div class="overlay">
-        <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
+        <div class="dialog ${this.fullscreen ? 'fullscreen' : ''}" @click=${(e: Event) => e.stopPropagation()}>
           <div class="editor-header">
-            <h2>Edit Sample</h2>
+            <div class="header-left">
+              <h2>Edit Sample</h2>
+              <button class="btn-expand" @click=${() => { this.fullscreen = !this.fullscreen; }} title=${this.fullscreen ? 'Centered window' : 'Full screen'}>
+                ${this.fullscreen ? iconContract : iconExpand}
+              </button>
+            </div>
             <span class="sample-name">${this.sample.name} · ${duration.toFixed(2)}s</span>
           </div>
 

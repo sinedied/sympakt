@@ -97,6 +97,22 @@ export const iconGrid = icon(svg`
   <rect x="14" y="14" width="7" height="7" />
 `);
 
+/** Expand / maximize */
+export const iconExpand = icon(svg`
+  <polyline points="15 3 21 3 21 9" />
+  <polyline points="9 21 3 21 3 15" />
+  <line x1="21" y1="3" x2="14" y2="10" />
+  <line x1="3" y1="21" x2="10" y2="14" />
+`);
+
+/** Contract / minimize */
+export const iconContract = icon(svg`
+  <polyline points="4 14 10 14 10 20" />
+  <polyline points="20 10 14 10 14 4" />
+  <line x1="14" y1="10" x2="21" y2="3" />
+  <line x1="10" y1="14" x2="3" y2="21" />
+`);
+
 /** Heart (filled, pixel art) */
 export const iconHeart = svg`
   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 9 9"
