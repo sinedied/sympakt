@@ -756,7 +756,7 @@ export class SampleEditor extends LitElement {
     if (this.slicerMode !== 'off' && time > this.fx.trimStart && time < this.fx.trimEnd) {
       const existingIdx = this.sliceMarkers.findIndex((m) => Math.abs(m - time) < tol);
       if (existingIdx >= 0) {
-        if (this.slicerMode === 'transient') this.slicerMode = 'manual';
+        if (this.slicerMode === 'transient' || this.slicerMode === 'even') this.slicerMode = 'manual';
         this.sliceMarkers = this.sliceMarkers.filter((_, i) => i !== existingIdx);
         return;
       }
@@ -1066,7 +1066,10 @@ export class SampleEditor extends LitElement {
                   </div>
                   <div class="checkbox-field">
                     <input type="checkbox" id="ed-normalize" .checked=${this.fx.normalize}
-                      @change=${(e: Event) => this.updateUtilityFx({ normalize: (e.target as HTMLInputElement).checked })} />
+                      @change=${(e: Event) => {
+                        const checked = (e.target as HTMLInputElement).checked;
+                        this.updateUtilityFx(checked ? { normalize: true, gainDb: 0 } : { normalize: false });
+                      }} />
                     <label for="ed-normalize">Normalize</label>
                   </div>
                   <div class="control-group">
@@ -1099,17 +1102,21 @@ export class SampleEditor extends LitElement {
                       @input=${(e: Event) => this.updateFx({ bitReduction: parseInt((e.target as HTMLInputElement).value) })} />
                     <span class="value">${this.fx.bitReduction} bit</span>
                   </div>
+                </div>
+                <div class="controls-row" style="margin-top:8px">
                   <div class="control-group">
                     <label>Filter</label>
                     <div class="radio-group">
+                      <button class=${!this.fx.filterEnabled ? 'active' : ''}
+                        @click=${() => this.updateFx({ filterEnabled: false })}>Off</button>
                       ${(['lowpass', 'highpass', 'bandpass'] as const).map((t) => html`
                         <button class=${this.fx.filterType === t && this.fx.filterEnabled ? 'active' : ''}
                           @click=${() => this.updateFx({ filterType: t, filterEnabled: true })}>${t === 'lowpass' ? 'LP' : t === 'highpass' ? 'HP' : 'BP'}</button>
                       `)}
-                      <button class=${!this.fx.filterEnabled ? 'active' : ''}
-                        @click=${() => this.updateFx({ filterEnabled: false })}>Off</button>
                     </div>
                   </div>
+                </div>
+                <div class="controls-row" style="margin-top:8px">
                   <div class="control-group">
                     <label>Cutoff</label>
                     <input type="range" min="1.3" max="4.3" step="0.01"
@@ -1134,7 +1141,7 @@ export class SampleEditor extends LitElement {
             <div class="accordion">
               <button class="accordion-header" aria-expanded=${this.activeSection === 'slicer' ? 'true' : 'false'}
                 @click=${() => this.toggleSection('slicer')}>
-                <span class="title">Slicer</span><span class="chevron">▼</span>
+                <span class="title">Slicer${this.slicerMode !== 'off' && sliceCount >= 2 ? html` <span style="color:var(--text-muted);font-size:7px;letter-spacing:0;margin-left:8px">${sliceCount} slices</span>` : nothing}</span><span class="chevron">▼</span>
               </button>
               <div class="accordion-body ${this.activeSection === 'slicer' ? 'open' : ''}">
                 <div class="slicer-controls">
@@ -1147,15 +1154,19 @@ export class SampleEditor extends LitElement {
                       <button class=${this.slicerMode === 'manual' ? 'active' : ''} @click=${() => this.onSlicerModeChange('manual')}>Manual</button>
                     </div>
                   </div>
-                  ${this.slicerMode === 'transient' ? html`
+                </div>
+                ${this.slicerMode === 'transient' ? html`
+                  <div class="slicer-controls" style="margin-top:8px">
                     <div class="control-group">
                       <label>Sensitivity</label>
                       <input type="range" min="0" max="1" step="0.01" .value=${String(this.slicerSensitivity)}
                         @input=${this.onSlicerSensitivityChange} />
                       <span class="value">${(this.slicerSensitivity * 100).toFixed(0)}%</span>
                     </div>
-                  ` : nothing}
-                  ${this.slicerMode === 'even' ? html`
+                  </div>
+                ` : nothing}
+                ${this.slicerMode === 'even' ? html`
+                  <div class="slicer-controls" style="margin-top:8px">
                     <div class="control-group">
                       <label>Slices</label>
                       <div class="radio-group">
@@ -1165,14 +1176,13 @@ export class SampleEditor extends LitElement {
                         `)}
                       </div>
                     </div>
-                  ` : nothing}
-                  ${this.slicerMode === 'manual' ? html`
+                  </div>
+                ` : nothing}
+                ${this.slicerMode === 'manual' ? html`
+                  <div class="slicer-controls" style="margin-top:8px">
                     <span class="slice-info">Click waveform to add/remove markers</span>
-                  ` : nothing}
-                  ${this.slicerMode !== 'off' ? html`
-                    <span class="slice-info">${sliceCount} slice${sliceCount !== 1 ? 's' : ''}</span>
-                  ` : nothing}
-                </div>
+                  </div>
+                ` : nothing}
                 ${this.slicerMode !== 'off' && sliceCount >= 2 ? html`
                   <div class="slicer-actions">
                     <button @click=${this.onExportSlicesToSlots} ?disabled=${this.isProcessing}
