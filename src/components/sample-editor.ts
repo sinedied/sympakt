@@ -220,7 +220,7 @@ export class SampleEditor extends LitElement {
         display: flex;
         flex-wrap: wrap;
         gap: 20px 12px;
-        align-items: flex-start;
+        align-items: center;
       }
 
       .control-group {
@@ -1108,18 +1108,22 @@ export class SampleEditor extends LitElement {
               </button>
               <div class="accordion-body ${this.activeSection === 'utility' ? 'open' : ''}">
                 <div class="controls-row">
-                  <div class="checkbox-field">
-                    <input type="checkbox" id="ed-reverse" .checked=${this.fx.reverse}
-                      @change=${(e: Event) => this.updateUtilityFx({ reverse: (e.target as HTMLInputElement).checked })} />
-                    <label for="ed-reverse">Reverse</label>
+                  <div class="control-group">
+                    <div class="checkbox-field">
+                      <input type="checkbox" id="ed-reverse" .checked=${this.fx.reverse}
+                        @change=${(e: Event) => this.updateUtilityFx({ reverse: (e.target as HTMLInputElement).checked })} />
+                      <label for="ed-reverse">Reverse</label>
+                    </div>
                   </div>
-                  <div class="checkbox-field">
-                    <input type="checkbox" id="ed-normalize" .checked=${this.fx.normalize}
-                      @change=${(e: Event) => {
-                        const checked = (e.target as HTMLInputElement).checked;
-                        this.updateUtilityFx(checked ? { normalize: true, gainDb: 0 } : { normalize: false });
-                      }} />
-                    <label for="ed-normalize">Normalize</label>
+                  <div class="control-group">
+                    <div class="checkbox-field">
+                      <input type="checkbox" id="ed-normalize" .checked=${this.fx.normalize}
+                        @change=${(e: Event) => {
+                          const checked = (e.target as HTMLInputElement).checked;
+                          this.updateUtilityFx(checked ? { normalize: true, gainDb: 0 } : { normalize: false });
+                        }} />
+                      <label for="ed-normalize">Normalize</label>
+                    </div>
                   </div>
                   <div class="control-group">
                     <label>Gain</label>
