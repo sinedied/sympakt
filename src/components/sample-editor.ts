@@ -232,20 +232,68 @@ export class SampleEditor extends LitElement {
 
       .control-group label {
         font-family: var(--font-pixel);
-        font-size: 6px;
-        color: var(--text-muted);
+        font-size: 7px;
+        color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 1px;
       }
 
       .control-group input[type='range'] {
         width: 100px;
-        accent-color: var(--accent);
-        height: 4px;
+        height: 18px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+        cursor: pointer;
+        margin: 2px 0;
+      }
+
+      .control-group input[type='range']::-webkit-slider-runnable-track {
+        height: 3px;
+        background: var(--border-color);
+        border-radius: 0;
+      }
+
+      .control-group input[type='range']::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 10px;
+        height: 14px;
+        background: var(--accent);
+        border: none;
+        border-radius: 2px;
+        margin-top: -5.5px;
+        background-image:
+          linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.3) 80%, transparent 80%),
+          linear-gradient(var(--accent), var(--accent));
+        background-size: 1px 100%, 100% 100%;
+        background-position: center, 0 0;
+        background-repeat: no-repeat;
+      }
+
+      .control-group input[type='range']::-moz-range-track {
+        height: 3px;
+        background: var(--border-color);
+        border: none;
+        border-radius: 0;
+      }
+
+      .control-group input[type='range']::-moz-range-thumb {
+        width: 10px;
+        height: 14px;
+        background: var(--accent);
+        border: none;
+        border-radius: 2px;
+        background-image:
+          linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.3) 80%, transparent 80%),
+          linear-gradient(var(--accent), var(--accent));
+        background-size: 1px 100%, 100% 100%;
+        background-position: center, 0 0;
+        background-repeat: no-repeat;
       }
 
       .control-group input[type='range']:disabled {
         opacity: 0.3;
+        cursor: default;
       }
 
       .control-group .value {
@@ -257,13 +305,13 @@ export class SampleEditor extends LitElement {
       .checkbox-field {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
       }
 
       .checkbox-field input[type='checkbox'] {
         accent-color: var(--accent);
-        width: 12px;
-        height: 12px;
+        width: 14px;
+        height: 14px;
       }
 
       .checkbox-field label {
