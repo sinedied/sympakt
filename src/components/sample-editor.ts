@@ -859,18 +859,36 @@ export class SampleEditor extends LitElement {
       return;
     }
 
-    // Cursor
+    // Cursor and tooltip — match the same hit-test logic as pointerdown
     const time = this.getTimeFromPointer(e);
     const tol = this.getHitTolerance();
-    let cursor = 'default';
+    const rect = canvas.getBoundingClientRect();
+    const hoverY = e.clientY - rect.top;
+    const hoverFlagZone = hoverY < 16;
+    const flagPx = 14;
+    const flagTimeSpan = (flagPx / rect.width) * (this.sample?.audioBuffer.duration ?? 0);
     const fiPos = this.fx.trimStart + this.fx.fadeInDuration;
     const foPos = this.fx.trimEnd - this.fx.fadeOutDuration;
-    if (Math.abs(time - fiPos) < tol) cursor = 'col-resize';
-    else if (Math.abs(time - foPos) < tol) cursor = 'col-resize';
-    else if (Math.abs(time - this.fx.trimStart) < tol || Math.abs(time - this.fx.trimEnd) < tol) cursor = 'ew-resize';
-    else if (this.slicerMode !== 'off' && this.isNearSliceMarker(time)) cursor = 'pointer';
-    else if (this.slicerMode === 'manual' || this.slicerMode === 'transient') cursor = 'crosshair';
+
+    // Fade in: separate handle when duration>0, flag zone when duration=0
+    const nearFadeIn = this.fx.fadeInDuration > 0
+      ? Math.abs(time - fiPos) < tol
+      : (hoverFlagZone && time >= this.fx.trimStart && time <= this.fx.trimStart + flagTimeSpan);
+    // Fade out: separate handle when duration>0, flag zone when duration=0
+    const nearFadeOut = this.fx.fadeOutDuration > 0
+      ? Math.abs(time - foPos) < tol
+      : (hoverFlagZone && time >= this.fx.trimEnd - flagTimeSpan && time <= this.fx.trimEnd);
+
+    let cursor = 'default';
+    let tip = '';
+    if (nearFadeIn) { cursor = 'col-resize'; tip = 'Drag to adjust fade in duration'; }
+    else if (nearFadeOut) { cursor = 'col-resize'; tip = 'Drag to adjust fade out duration'; }
+    else if (Math.abs(time - this.fx.trimStart) < tol) { cursor = 'ew-resize'; tip = 'Drag to set trim start'; }
+    else if (Math.abs(time - this.fx.trimEnd) < tol) { cursor = 'ew-resize'; tip = 'Drag to set trim end'; }
+    else if (this.slicerMode !== 'off' && this.isNearSliceMarker(time)) { cursor = 'pointer'; tip = 'Click to remove slice marker'; }
+    else if (this.slicerMode === 'manual' || this.slicerMode === 'transient') { cursor = 'crosshair'; tip = 'Click to add slice marker'; }
     canvas.style.cursor = cursor;
+    canvas.title = tip;
   }
 
   private onCanvasPointerUp(e: PointerEvent): void {
@@ -1108,14 +1126,14 @@ export class SampleEditor extends LitElement {
               </button>
               <div class="accordion-body ${this.activeSection === 'utility' ? 'open' : ''}">
                 <div class="controls-row">
-                  <div class="control-group">
+                  <div class="control-group" title="Reverse the audio">
                     <div class="checkbox-field">
                       <input type="checkbox" id="ed-reverse" .checked=${this.fx.reverse}
                         @change=${(e: Event) => this.updateUtilityFx({ reverse: (e.target as HTMLInputElement).checked })} />
                       <label for="ed-reverse">Reverse</label>
                     </div>
                   </div>
-                  <div class="control-group">
+                  <div class="control-group" title="Peak-normalize audio to 0 dB">
                     <div class="checkbox-field">
                       <input type="checkbox" id="ed-normalize" .checked=${this.fx.normalize}
                         @change=${(e: Event) => {
@@ -1125,7 +1143,7 @@ export class SampleEditor extends LitElement {
                       <label for="ed-normalize">Normalize</label>
                     </div>
                   </div>
-                  <div class="control-group">
+                  <div class="control-group" title="Adjust volume level in decibels">
                     <label>Gain</label>
                     <input type="range" min="-24" max="24" step="0.5" .value=${String(this.fx.gainDb)}
                       @input=${(e: Event) => this.updateUtilityFx({ gainDb: parseFloat((e.target as HTMLInputElement).value) })} />
@@ -1143,13 +1161,13 @@ export class SampleEditor extends LitElement {
               </button>
               <div class="accordion-body ${this.activeSection === 'fx' ? 'open' : ''}">
                 <div class="controls-row">
-                  <div class="control-group">
+                  <div class="control-group" title="Reduce sample rate for lo-fi crunch effect">
                     <label>Sample Rate</label>
                     <input type="range" min="1000" max="48000" step="100" .value=${String(this.fx.sampleRateReduction)}
                       @input=${(e: Event) => this.updateFx({ sampleRateReduction: parseInt((e.target as HTMLInputElement).value) })} />
                     <span class="value">${this.formatFreq(this.fx.sampleRateReduction)}</span>
                   </div>
-                  <div class="control-group">
+                  <div class="control-group" title="Reduce bit depth for digital distortion effect">
                     <label>Bit Depth</label>
                     <input type="range" min="1" max="16" step="1" .value=${String(this.fx.bitReduction)}
                       @input=${(e: Event) => this.updateFx({ bitReduction: parseInt((e.target as HTMLInputElement).value) })} />
@@ -1157,7 +1175,7 @@ export class SampleEditor extends LitElement {
                   </div>
                 </div>
                 <div class="controls-row" style="margin-top:8px">
-                  <div class="control-group">
+                  <div class="control-group" title="Filter type: Off, Low-pass, High-pass, Band-pass">
                     <label>Filter</label>
                     <div class="radio-group">
                       <button class=${!this.fx.filterEnabled ? 'active' : ''}
@@ -1170,7 +1188,7 @@ export class SampleEditor extends LitElement {
                   </div>
                 </div>
                 <div class="controls-row" style="margin-top:8px">
-                  <div class="control-group">
+                  <div class="control-group" title="Filter cutoff frequency">
                     <label>Cutoff</label>
                     <input type="range" min="1.3" max="4.3" step="0.01"
                       .value=${String(Math.log10(this.fx.filterCutoff))}
@@ -1178,7 +1196,7 @@ export class SampleEditor extends LitElement {
                       @input=${(e: Event) => this.updateFx({ filterCutoff: Math.round(Math.pow(10, parseFloat((e.target as HTMLInputElement).value))) })} />
                     <span class="value">${this.formatFreq(this.fx.filterCutoff)}</span>
                   </div>
-                  <div class="control-group">
+                  <div class="control-group" title="Filter resonance (Q factor)">
                     <label>Resonance</label>
                     <input type="range" min="0" max="30" step="0.1"
                       .value=${String(this.fx.filterResonance)}
@@ -1198,7 +1216,7 @@ export class SampleEditor extends LitElement {
               </button>
               <div class="accordion-body ${this.activeSection === 'slicer' ? 'open' : ''}">
                 <div class="slicer-controls">
-                  <div class="control-group">
+                  <div class="control-group" title="Slicing mode: detect transients, even spacing, or place manually">
                     <label>Mode</label>
                     <div class="radio-group">
                       <button class=${this.slicerMode === 'off' ? 'active' : ''} @click=${() => this.onSlicerModeChange('off')}>Off</button>
@@ -1210,7 +1228,7 @@ export class SampleEditor extends LitElement {
                 </div>
                 ${this.slicerMode === 'transient' ? html`
                   <div class="slicer-controls" style="margin-top:8px">
-                    <div class="control-group">
+                    <div class="control-group" title="Transient detection threshold — higher values detect more onsets">
                       <label>Sensitivity</label>
                       <input type="range" min="0" max="1" step="0.01" .value=${String(this.slicerSensitivity)}
                         @input=${this.onSlicerSensitivityChange} />
@@ -1220,7 +1238,7 @@ export class SampleEditor extends LitElement {
                 ` : nothing}
                 ${this.slicerMode === 'even' ? html`
                   <div class="slicer-controls" style="margin-top:8px">
-                    <div class="control-group">
+                    <div class="control-group" title="Number of evenly spaced slices (powers of 2)">
                       <label>Slices</label>
                       <div class="radio-group">
                         ${EVEN_SLICE_VALUES.map((n) => html`
@@ -1254,7 +1272,7 @@ export class SampleEditor extends LitElement {
 
           <div class="editor-footer">
             <div class="footer-left">
-              <button @click=${this.onTogglePlayback} ?disabled=${this.isProcessing} title="Preview with effects (Space)">
+              <button @click=${this.onTogglePlayback} ?disabled=${this.isProcessing} title="Preview (Space)">
                 ${this.isPlaying ? iconStop : iconPlay}
                 <span class="preview-label">${this.isPlaying ? 'Stop' : 'Preview'}</span>
               </button>
