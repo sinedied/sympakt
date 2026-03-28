@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { theme, sharedStyles } from '../styles/theme.js';
-import { generateWaveformData, findNearestZeroCrossing } from '../services/audio-engine.js';
+import { generateWaveformData, generatePeakWaveformData, findNearestZeroCrossing } from '../services/audio-engine.js';
 import { applyEffectChain, reverseAudio, normalizeAudio, applyGain } from '../services/audio-effects.js';
 import { detectTransients, createEvenSlices } from '../services/transient-detection.js';
 import { EXPORT_SAMPLE_RATE, WAVEFORM_COLUMNS } from '../types/index.js';
@@ -188,6 +188,10 @@ export class SampleEditor extends LitElement {
         background: var(--bg-slot-hover);
       }
 
+      .accordion-header:active {
+        transform: none;
+      }
+
       .accordion-header .title {
         color: var(--accent);
       }
@@ -196,6 +200,7 @@ export class SampleEditor extends LitElement {
         font-size: 10px;
         color: var(--text-muted);
         transition: transform 200ms ease;
+        display: none;
       }
 
       .accordion-header[aria-expanded="true"] .chevron {
@@ -204,7 +209,7 @@ export class SampleEditor extends LitElement {
 
       .accordion-body {
         padding: 10px;
-        display: none;
+        display: block;
       }
 
       .accordion-body.open {
@@ -399,6 +404,10 @@ export class SampleEditor extends LitElement {
         .waveform-section { padding: 8px 12px 0; }
         .controls-area { padding: 0 12px 8px; }
         .editor-footer { padding: 8px 12px; }
+        .accordion-header .chevron { display: inline; }
+        .accordion-header { cursor: pointer; }
+        .accordion-body { display: none; }
+        .accordion-body.open { display: block; }
       }
     `,
   ];
@@ -472,7 +481,7 @@ export class SampleEditor extends LitElement {
     const buf = this.sample.audioBuffer;
     this.fx = defaultEditorState(buf.duration);
     this.initialFx = defaultEditorState(buf.duration);
-    this.sourceWaveformData = generateWaveformData(buf, WAVEFORM_COLUMNS);
+    this.sourceWaveformData = generatePeakWaveformData(buf, WAVEFORM_COLUMNS);
     this.displayWaveformData = this.sourceWaveformData;
     this.sliceMarkers = [];
     this.slicerMode = 'off';
@@ -501,7 +510,7 @@ export class SampleEditor extends LitElement {
     if (this.fx.reverse) buf = reverseAudio(buf);
     if (this.fx.normalize) buf = normalizeAudio(buf);
     if (this.fx.gainDb !== 0) buf = applyGain(buf, this.fx.gainDb);
-    this.displayWaveformData = generateWaveformData(buf, WAVEFORM_COLUMNS);
+    this.displayWaveformData = generatePeakWaveformData(buf, WAVEFORM_COLUMNS);
   }
 
   // --- Waveform ---

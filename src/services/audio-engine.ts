@@ -92,6 +92,35 @@ export function generateWaveformData(
 }
 
 /**
+ * Generate peak waveform data (0..1 per column) for accurate amplitude display.
+ * Values represent absolute peak sample values — 1.0 means 0 dBFS.
+ * Use this for the sample editor where visual clipping should match audio clipping.
+ */
+export function generatePeakWaveformData(
+  buffer: AudioBuffer,
+  columns: number = WAVEFORM_COLUMNS,
+): number[] {
+  const channelData = buffer.getChannelData(0);
+  if (channelData.length === 0) return new Array(columns).fill(0);
+
+  const waveform: number[] = [];
+
+  for (let col = 0; col < columns; col++) {
+    const start = Math.floor((col / columns) * channelData.length);
+    const end = Math.max(start + 1, Math.floor(((col + 1) / columns) * channelData.length));
+    const clampedEnd = Math.min(end, channelData.length);
+    let peak = 0;
+    for (let i = start; i < clampedEnd; i++) {
+      const abs = Math.abs(channelData[i]);
+      if (abs > peak) peak = abs;
+    }
+    waveform.push(Math.min(peak, 1));
+  }
+
+  return waveform;
+}
+
+/**
  * Play a sample from an AudioBuffer at a given offset (seconds).
  * When lofi mode is active, a lowpass filter simulates the reduced bandwidth
  * of the LOFI/XLOFI export.
