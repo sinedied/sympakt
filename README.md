@@ -27,7 +27,7 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
 - **Loop editing with crossfade** — interactive waveform overlay with zero-crossing snap, adjustable crossfade for click-free seamless loops
 - **LOFI / XLOFI / SXLOFI / GXLOFI mode** — extends max sample time to 10s, 20s, 40s, or 80s by exporting pitched up, with bandwidth-accurate preview
 - **Dual sample mode** — pack two samples into one slot (A+B); doubles your sample count within the 64-slot limit
-- **Pitch detection** — auto-detects fundamental frequency and displays the musical note
+- **Built-in sample editor** — trim, fade, reverse, normalize, bit crusher,  filter, and slice samples without leaving the app
 - **Virtual keyboard** — 2-octave chromatic keyboard to audition samples at different pitches
 - **Fully offline & private** — single self-contained HTML file, zero backend, session auto-saved in browser
 
@@ -47,7 +47,14 @@ Create, preview, and export 64-slot sample banks for the [Elektron Syntakt](http
   **On the Syntakt**: sample A is accessible at the regular slot position (1–64). To play sample B, set the playback direction to **reverse** — B is stored reversed at the end of the WAV, so reversing it plays the original sound. Use a short **decay** or **sample length** to isolate the half you want to hear, since both samples share the same WAV file.
 
 - **Reverse** — click a sample name and choose **REVERSE** to reverse the audio. The waveform updates to show the reversed audio. Click **REVERSE** again to undo. Works in dual split mode too (per-side).
-- **Sample editor** — click a sample name and choose **EDIT SAMPLE** to open a full-featured destructive editor. Includes trim (drag handles on waveform), reverse, fade in/out, normalize, gain, sample rate reduction, bit reduction, LP/HP/BP filtering with adjustable cutoff and resonance, and a slicer (transient detection, even-spacing, or manual) with export to slots or ZIP. Click **Apply** to save changes or **Cancel** to discard.
+- **Sample editor** — click a sample name and choose **EDIT SAMPLE** to open a destructive sample editor modal. Features:
+  - **Trim** — drag white handles on the waveform to set start/end points
+  - **Fade in/out** — drag the blue flag handles to add linear fades, with real-time waveform visualization
+  - **Utility** — reverse, peak-normalize, and gain adjustment (waveform updates live)
+  - **FX** — sample rate reduction (lo-fi crunch), bit depth reduction, and LP/HP/BP filter with adjustable cutoff and resonance
+  - **Slicer** — split samples using transient detection, even spacing (powers of 2), or manual click-to-place markers. Preview individual slices with ◀/▶ navigation. Export slices to bank slots or download as a ZIP
+  - Click **Apply** to save changes (editor stays open for further edits) or **Close** to exit (confirms if unapplied changes exist)
+  - Toggle between centered and full-screen layout with the expand button
 - **Import a pack** — click **Import .zip** to load a previously exported sample pack
 - **Export** — click **Export .zip**, set a pack name, toggle normalization, and optionally include original files
 - **Virtual keyboard** — press **P** or click the keyboard icon to show a 2-octave piano; click a sample slot to select it, then play it chromatically using the on-screen keys or QWERTY shortcuts (A–J for white keys, W/E/T/Y/U for sharps). Use **←/→** to shift the octave range and **↑/↓** to switch between samples
